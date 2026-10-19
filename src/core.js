@@ -48,7 +48,7 @@ const WORLDS = [
 const BOSS = ['LE GARDIEN', 'LE NŒUD', 'LA GRANDE LAME', 'LE LÉVIATHAN', 'LE MIRAGE', 'LA PRESSE', 'LE VOILE', 'L’ABSENCE', 'LE BRASIER', 'L’ÉCLAIR'];
 
 // Niveau d'apparition de chaque type de passage
-const UNLOCK = { spk: 0, gap: 0, spk2: 2, plt: 3, saw: 5, gap2: 7, wal: 9, mpl: 13, fsaw: 17, pad: 21, orb: 26, msaw: 31, ceil: 36, bed: 43, combo: 50 };
+const UNLOCK = { spk: 0, gap: 0, spk2: 1, plt: 2, saw: 4, gap2: 5, wal: 6, combo: 8, mpl: 10, fsaw: 12, pad: 14, orb: 20, msaw: 22, combo3: 26, ceil: 30, bed: 32 };
 const NEWSIGN = {
   plt: 'PLATEFORME : POSE-TOI DESSUS', saw: 'SCIE : SAUTE PAR-DESSUS', gap2: 'GRAND TROU : DOUBLE SAUT',
   wal: 'MUR : PASSE PAR L’OUVERTURE', mpl: 'PLATEFORME MOBILE', fsaw: 'SCIE HAUTE : NE SAUTE PAS',
@@ -56,13 +56,18 @@ const NEWSIGN = {
   ceil: 'PLAFOND BAS : RESTE AU SOL', bed: 'LIT DE PIQUES : DE PLATEFORME EN PLATEFORME',
 };
 
+// Difficulté : palier fort à chaque chapitre (après chaque boss), rampe dans le chapitre,
+// et boss nettement plus long et plus dense.
+const CH_D = [.22, .45, .6, .7, .78, .84, .89, .93, .96, .98];
 function storyParams(i) {
-  const w = Math.floor(i / 10), boss = i % 10 === 9;
-  const d = clamp((i + (boss ? 5 : 0)) / 95, 0, 1);
-  const sp = +(5.2 + 2.6 * Math.pow(i / 99, .9) + (boss ? .2 : 0)).toFixed(2);
-  const dur = 9 + i * .13 + (boss ? 6 : 0);
-  const name = boss ? BOSS[w] : `${w + 1}-${i % 10 + 1}`;
-  return { mode: 'story', i, w, boss, d, sp, bpm: WORLDS[w].bpm, dur, name, lvlEq: i };
+  const w = Math.floor(i / 10), k = i % 10, boss = k === 9;
+  let d = w === 0 && k < 4 ? .04 + k * .05 : CH_D[w] + k * .014;
+  let rest = w === 0 ? (k < 4 ? 2.4 - k * .25 : 1.3 - (k - 4) * .05) : Math.max(.45, 1.1 * Math.pow(.85, w) - k * .03);
+  let sp = 5.2 + w * .3 + k * .02;
+  let dur = 10 + w * 1.2 + k * .25;
+  if (boss) { d += .1; rest *= .75; sp += .25; dur = Math.min(48, dur * 2.2); }
+  const name = boss ? BOSS[w] : `${w + 1}-${k + 1}`;
+  return { mode: 'story', i, w, boss, d: clamp(d, 0, 1), rest, sp: +sp.toFixed(2), bpm: WORLDS[w].bpm, dur, name, lvlEq: i, comboW: (w >= 1 ? .5 + w * .35 : .3) * (boss ? 2 : 1) };
 }
 
 // ── PASSAGES (chunks) ────────────────────────────────────────────
@@ -144,20 +149,26 @@ const CH = {
     }
     return { obs: ob, end: x + W };
   },
+  combo3(x, c) {
+    const a = CH.combo(x, c);
+    const b = CH.combo(c.q(a.end + Math.max(c.B * 1.2, c.R1 * .8)), c);
+    return { obs: a.obs.concat(b.obs), gaps: (a.gaps || []).concat(b.gaps || []), end: b.end };
+  },
   combo(x, c) {
-    const pool = ['spk', 'gap', 'saw', 'wal', 'msaw', 'fsaw'];
+    const pool = ['spk', 'gap', 'saw', 'wal', 'msaw', 'fsaw', 'gap2', 'ceil'].filter(t => !c.unl || c.unl.includes(t));
     const a = CH[pool[Math.floor(c.r() * pool.length)]](x, c);
-    const b = CH[pool[Math.floor(c.r() * pool.length)]](c.q(a.end + Math.max(c.B * 1.5, c.R1 * .9)), c);
+    const b = CH[pool[Math.floor(c.r() * pool.length)]](c.q(a.end + Math.max(c.B * lerp(1.5, .9, c.d), c.R1 * lerp(.9, .55, c.d))), c);
     return { obs: a.obs.concat(b.obs), gaps: (a.gaps || []).concat(b.gaps || []), end: b.end };
   },
 };
 
-function pickChunk(rng, lvlEq, last) {
+function pickChunk(rng, lvlEq, last, comboW) {
   const types = Object.keys(UNLOCK).filter(t => UNLOCK[t] <= lvlEq);
   const ws = types.map(t => {
     let w = 1;
     if (t === 'spk' || t === 'gap') w = lvlEq < 10 ? 1.6 : .8;
     if (lvlEq - UNLOCK[t] < 4 && UNLOCK[t] > 0) w = 2.4;
+    if ((t === 'combo' || t === 'combo3') && comboW) w = comboW;
     if (t === last) w *= .25;
     return w;
   });
@@ -188,6 +199,7 @@ function genStory(i, fix) {
   if (fix === undefined) fix = (typeof SEEDFIX !== 'undefined' && SEEDFIX[i]) || 0;
   const rng = rngOf(hashStr('BOLT' + i + '_' + fix));
   const c = chunkCtx(rng, p.sp, p.d, p.bpm);
+  c.unl = Object.keys(UNLOCK).filter(t => UNLOCK[t] <= i);
   const len = Math.round(p.sp * 60 * p.dur);
   const L = { ...p, len, obs: [], gaps: [], spAt: () => p.sp };
   let x = c.q(c.B * 4), last = null, first = true;
@@ -196,13 +208,13 @@ function genStory(i, fix) {
   if (i === 1) L.obs.push({ t: 'sign', x: 60, txt: 'MAINTIENS : SAUT PLUS HAUT' });
   if (i === 2) L.obs.push({ t: 'sign', x: 60, txt: 'RE-TAPE EN L’AIR : DOUBLE SAUT' });
   while (x < len - c.B * 4) {
-    let type = first && fresh ? fresh : pickChunk(rng, p.lvlEq, last);
+    let type = first && fresh ? fresh : pickChunk(rng, p.lvlEq, last, p.comboW);
     if (first && fresh) L.obs.push({ t: 'sign', x: Math.round(x - c.B * 2.5), txt: NEWSIGN[fresh] });
     const res = CH[type](x, c);
     if (res.end > len - c.B * 2) break;
     L.obs.push(...res.obs); if (res.gaps) L.gaps.push(...res.gaps);
-    const rest = lerp(3.2, 1.6, p.d) + rng() * (p.boss ? .5 : 1.2);
-    x = c.q(res.end + Math.max(rest * c.B, c.R1 * .55));
+    const rest = p.rest * (1 + rng() * .45);
+    x = c.q(res.end + Math.max(rest * c.B, c.R1 * Math.max(.32, .55 - p.w * .03)));
     last = type; first = false;
   }
   return finalize(L);
