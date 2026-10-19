@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BoltBall">
+<meta name="description" content="BoltBall : die and retry à une touche. 100 niveaux, mode Endless, 100 skins à débloquer.">
+<title>BoltBall</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%23ff3333'/%3E%3Cpath d='M36 8 18 36h12l-4 20 20-30H34z' fill='%23fff'/%3E%3C/svg%3E">
+<style>
+/*CSS*/
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="flash"></div>
+
+<!-- HUD -->
+<div id="hud" class="off">
+  <div class="hl"><span id="hName">1-1</span><span id="hSub"></span></div>
+  <div class="hc"><div id="prog"><i id="progF"></i><b id="progB"></b></div><span id="hPct">0 %</span></div>
+  <div class="hr"><span id="hDeaths">0</span><button id="pbtn" aria-label="Pause">II</button></div>
+</div>
+<div id="rot" class="off">Tourne ton téléphone pour mieux voir</div>
+<div id="toasts"></div>
+
+<div class="ui">
+<!-- PSEUDO -->
+<section class="scr off" id="s-name">
+  <div class="logo"><span>BOLT</span>BALL</div>
+  <p class="tag">DIE · RETRY · DOMINATE</p>
+  <input type="text" id="inp" placeholder="TON PSEUDO" maxlength="12" autocomplete="off" spellcheck="false">
+  <button class="btn red big" id="bName">JOUER</button>
+</section>
+
+<!-- ACCUEIL -->
+<section class="scr off" id="s-home">
+  <div class="logo" id="logo"><span>BOLT</span>BALL</div>
+  <p class="tag" id="hello"></p>
+  <canvas id="homeSkin" width="120" height="120"></canvas>
+  <div class="menu">
+    <button class="btn red big" data-go="story">HISTOIRE<small id="mStory"></small></button>
+    <button class="btn red big" data-go="endless">ENDLESS<small id="mEnd"></small></button>
+    <button class="btn alt big" data-go="daily">DÉFI DU JOUR<small id="mDaily"></small></button>
+    <div class="row">
+      <button class="btn drk" data-go="coll">SKINS <small id="mColl"></small></button>
+      <button class="btn drk" data-go="lb">CLASSEMENT</button>
+      <button class="btn drk" data-go="set">RÉGLAGES</button>
+    </div>
+  </div>
+</section>
+
+<!-- HISTOIRE -->
+<section class="scr off" id="s-story">
+  <div class="top"><button class="btn drk sm" data-go="home">RETOUR</button><h2>HISTOIRE</h2><span class="pill" id="stStars"></span></div>
+  <div id="chTabs"></div>
+  <h3 id="chName"></h3>
+  <div id="lvGrid"></div>
+  <p class="hint" id="chHint"></p>
+</section>
+
+<!-- SKINS & EXPLOITS -->
+<section class="scr off" id="s-coll">
+  <div class="top"><button class="btn drk sm" data-go="home">RETOUR</button><h2>SKINS</h2><span class="pill" id="collCount"></span></div>
+  <div class="tabs" id="collTabs"><button data-f="all" class="on">TOUS</button><button data-f="got">DÉBLOQUÉS</button><button data-f="todo">À FAIRE</button></div>
+  <div id="collGrid"></div>
+</section>
+
+<!-- CLASSEMENT -->
+<section class="scr off" id="s-lb">
+  <div class="top"><button class="btn drk sm" data-go="home">RETOUR</button><h2>CLASSEMENT</h2><span></span></div>
+  <div class="tabs" id="lbTabs"><button data-m="endless" class="on">ENDLESS</button><button data-m="daily">DÉFI DU JOUR</button><button data-m="story">HISTOIRE</button></div>
+  <p class="hint" id="lbInfo"></p>
+  <div id="lbList"></div>
+</section>
+
+<!-- RÉGLAGES -->
+<section class="scr off" id="s-set">
+  <div class="top"><button class="btn drk sm" data-go="home">RETOUR</button><h2>RÉGLAGES</h2><span></span></div>
+  <div class="set">
+    <label>Pseudo<input type="text" id="setName" maxlength="12" spellcheck="false"></label>
+    <label>Musique<button class="tog" data-s="music"></button></label>
+    <label>Effets sonores<button class="tog" data-s="sfx"></button></label>
+    <label>Volume<input type="range" id="setVol" min="0" max="1" step=".05"></label>
+    <label>Flash à la mort<button class="tog" data-s="flash"></button></label>
+    <label>Tremblement d’écran<button class="tog" data-s="shake"></button></label>
+    <p class="hint">Saut : tap, clic, Espace ou ↑ · Maintenir = saut plus haut · R = recommencer · Échap = pause</p>
+    <button class="btn drk sm" id="bReset">EFFACER MA PROGRESSION</button>
+  </div>
+</section>
+
+<!-- PAUSE -->
+<section class="scr off dim" id="s-pause">
+  <h2 class="big">PAUSE</h2>
+  <div class="menu">
+    <button class="btn red big" id="bResume">REPRENDRE</button>
+    <button class="btn drk" id="bRestart">RECOMMENCER</button>
+    <button class="btn drk" id="bPractice"></button>
+    <div class="row"><button class="btn drk sm tog2" data-s="music"></button><button class="btn drk sm tog2" data-s="sfx"></button></div>
+    <button class="btn drk" id="bQuit">MENU</button>
+  </div>
+</section>
+
+<!-- FIN DE NIVEAU -->
+<section class="scr off clear" id="s-done">
+  <div class="card">
+    <div id="dStars"></div>
+    <div id="dTitle"></div>
+    <div class="bigv" id="dDeaths"></div>
+    <div class="sub" id="dSub"></div>
+    <div class="row">
+      <button class="btn red" id="bNext">SUIVANT</button>
+      <button class="btn drk" id="bRetry">REJOUER</button>
+    </div>
+    <div class="row">
+      <button class="btn drk sm" id="bShare1">PARTAGER</button>
+      <button class="btn drk sm" id="bMenu1">MENU</button>
+    </div>
+    <p class="hint" id="dReplay">Replay de tous tes essais</p>
+  </div>
+</section>
+
+<!-- FIN DE COURSE ENDLESS -->
+<section class="scr off clear" id="s-over">
+  <div class="card">
+    <div id="oTitle">ENDLESS</div>
+    <div class="bigv" id="oDist"></div>
+    <div class="sub" id="oSub"></div>
+    <div class="sub" id="oRank"></div>
+    <div class="row">
+      <button class="btn red" id="bAgain">REJOUER</button>
+      <button class="btn drk sm" id="bShare2">PARTAGER</button>
+    </div>
+    <button class="btn drk sm" id="bMenu2">MENU</button>
+    <p class="hint">Espace ou tap pour relancer</p>
+  </div>
+</section>
+</div>
+
+<script>
+/*JS*/
+</script>
+</body>
+</html>
