@@ -59,7 +59,7 @@ const NEWSIGN = {
 function storyParams(i) {
   const w = Math.floor(i / 10), boss = i % 10 === 9;
   const d = clamp((i + (boss ? 5 : 0)) / 95, 0, 1);
-  const sp = +(3.6 + 2.9 * Math.pow(i / 99, .9) + (boss ? .2 : 0)).toFixed(2);
+  const sp = +(5.2 + 2.6 * Math.pow(i / 99, .9) + (boss ? .2 : 0)).toFixed(2);
   const dur = 9 + i * .13 + (boss ? 6 : 0);
   const name = boss ? BOSS[w] : `${w + 1}-${i % 10 + 1}`;
   return { mode: 'story', i, w, boss, d, sp, bpm: WORLDS[w].bpm, dur, name, lvlEq: i };
@@ -209,12 +209,12 @@ function genStory(i, fix) {
 }
 
 // ── ENDLESS (flux infini) ────────────────────────────────────────
-function endlessSp(x) { return 4 + 3 * Math.min(1, x / 45000) + .5 * clamp((x - 45000) / 55000, 0, 1); }
+function endlessSp(x) { return 5.6 + 2.6 * Math.min(1, x / 50000) + .6 * clamp((x - 50000) / 60000, 0, 1); }
 function endlessD(x) { return Math.min(1, x / 30000); }
 function newEndless(seed, daily) {
-  const L = { mode: daily ? 'daily' : 'endless', i: -1, w: 0, boss: false, sp: 4, bpm: 132, len: Infinity, obs: [], gaps: [], ci: 0, gi: 0,
+  const L = { mode: daily ? 'daily' : 'endless', i: -1, w: 0, boss: false, sp: 5.6, bpm: 132, len: Infinity, obs: [], gaps: [], ci: 0, gi: 0,
     name: daily ? 'DÉFI DU JOUR' : 'ENDLESS', spAt: endlessSp, rng: rngOf(seed), gx: 0, last: null };
-  L.gx = 4 * 4 * 3600 / 132;
+  L.gx = 4 * 5.6 * 3600 / 132;
   extendEndless(L, 2500);
   return L;
 }

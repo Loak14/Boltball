@@ -3,14 +3,15 @@
 // ════════════════════════════════════════════════════════════════
 const $ = id => document.getElementById(id);
 const cv = $('c'), cx = cv.getContext('2d');
-let W = 0, H = 0, DPR = 1, SC = 1, OX = 0, OY = 0;
+let W = 0, H = 0, DPR = 1, SC = 1, OX = 0, OY = 0, VWV = VW, PXV = PX;
 
 function resize() {
   DPR = Math.min(2, window.devicePixelRatio || 1);
   W = innerWidth; H = innerHeight;
   cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
-  SC = Math.min(H / VH, W / VW); OX = (W - VW * SC) / 2; OY = (H - VH * SC) / 2;
-  $('rot').classList.toggle('off', !(Game.state === 'play' && H > W * 1.1));
+  const portrait = H > W;
+  VWV = portrait ? 420 : VW; PXV = portrait ? 85 : PX;
+  SC = Math.min(H / VH, W / VWV); OX = (W - VWV * SC) / 2; OY = (H - VH * SC) * (portrait ? .58 : .5);
 }
 
 // ── ÉTAT ─────────────────────────────────────────────────────────
@@ -65,7 +66,7 @@ function drawWorld(L, camX, t, tm, opts = {}) {
   const Wd = WORLDS[L.w] || WORLDS[0], top = -OY / SC - 20, bot = (H - OY) / SC + 20;
   // étoiles + décors
   cx.fillStyle = 'rgba(255,255,255,.5)';
-  for (let i = 0; i < 46; i++) { const x = ((i * 173.3 - camX * .04) % VW + VW) % VW, y = top + ((i * 97.7) % (G - top - 60)); cx.fillRect(x, y, i % 5 ? 1.2 : 2, i % 5 ? 1.2 : 2); }
+  for (let i = 0; i < 46; i++) { const x = ((i * 173.3 - camX * .04) % VWV + VWV) % VWV, y = top + ((i * 97.7) % (G - top - 60)); cx.fillRect(x, y, i % 5 ? 1.2 : 2, i % 5 ? 1.2 : 2); }
   for (const [layer, f, a] of [[0, .12, .07], [1, .35, .13]]) {
     const p = silPath(L.w, layer), off = -((camX * f) % 1600);
     cx.fillStyle = rgba(Wd.ed, a);
@@ -73,10 +74,10 @@ function drawWorld(L, camX, t, tm, opts = {}) {
   }
   // grille de vitesse
   cx.strokeStyle = rgba(Wd.ed, .07); cx.lineWidth = 1;
-  for (let x = -((camX * .6) % 80); x < VW; x += 80) { cx.beginPath(); cx.moveTo(x, top); cx.lineTo(x, G); cx.stroke(); }
+  for (let x = -((camX * .6) % 80); x < VWV; x += 80) { cx.beginPath(); cx.moveTo(x, top); cx.lineTo(x, G); cx.stroke(); }
 
   cx.save(); cx.translate(-camX, 0);
-  const x0 = camX - 60, x1 = camX + VW + 60;
+  const x0 = camX - 60, x1 = camX + VWV + 60;
   // sol
   let sx = x0;
   const drawSeg = (a, b) => {
@@ -180,11 +181,19 @@ function drawObs(o, t, Wd, top, tm, P) {
       break;
     }
     case 'sign': {
-      cx.font = '900 13px "Arial Black",Arial'; const tw = cx.measureText(o.txt).width + 20;
-      cx.fillStyle = '#555'; cx.fillRect(o.x - 2, G - 60, 4, 60);
-      cx.fillStyle = 'rgba(0,0,0,.65)'; cx.strokeStyle = Wd.ac; cx.lineWidth = 2;
-      cx.beginPath(); cx.roundRect ? cx.roundRect(o.x - 10, G - 92, tw, 30, 6) : cx.rect(o.x - 10, G - 92, tw, 30); cx.fill(); cx.stroke();
-      cx.fillStyle = '#fff'; cx.textAlign = 'left'; cx.textBaseline = 'middle'; cx.fillText(o.txt, o.x, G - 77);
+      cx.font = '900 13px "Arial Black",Arial'; const tw = cx.measureText(o.txt).width + 24, bx = o.x - 12, by = G - 96, bh = 32;
+      // poteaux
+      for (const px of [bx + 10, bx + tw - 16]) { cx.fillStyle = '#4a2c14'; cx.fillRect(px, by + 10, 6, G - by - 10); cx.fillStyle = 'rgba(255,255,255,.08)'; cx.fillRect(px, by + 10, 2, G - by - 10); }
+      // planche
+      const wg = cx.createLinearGradient(0, by, 0, by + bh); wg.addColorStop(0, '#c08a4e'); wg.addColorStop(.5, '#a06a32'); wg.addColorStop(1, '#7a4c22');
+      cx.fillStyle = wg; cx.fillRect(bx, by, tw, bh);
+      cx.strokeStyle = 'rgba(60,30,10,.35)'; cx.lineWidth = 1;
+      for (const [yy, a] of [[by + 8, .3], [by + 17, .8], [by + 25, .5]]) { cx.beginPath(); cx.moveTo(bx + 3, yy); cx.bezierCurveTo(bx + tw * .3, yy - 2 * a, bx + tw * .6, yy + 2 * a, bx + tw - 3, yy); cx.stroke(); }
+      cx.strokeStyle = '#4a2c14'; cx.lineWidth = 2; cx.strokeRect(bx + 1, by + 1, tw - 2, bh - 2);
+      cx.fillStyle = '#3a220e'; for (const nx of [bx + 6, bx + tw - 6]) { cx.beginPath(); cx.arc(nx, by + 6, 1.8, 0, TAU); cx.arc(nx, by + bh - 6, 1.8, 0, TAU); cx.fill(); }
+      cx.textAlign = 'left'; cx.textBaseline = 'middle';
+      cx.fillStyle = 'rgba(255,230,190,.35)'; cx.fillText(o.txt, bx + 12, by + bh / 2 + 1.5);
+      cx.fillStyle = '#2a1606'; cx.fillText(o.txt, bx + 12, by + bh / 2);
       break;
     }
   }
@@ -199,7 +208,7 @@ function drawBall(x, y, sk, tm, spin, sx = 1, sy = 1, alpha = 1, r = PR) {
 function drawSides() {
   cx.setTransform(DPR, 0, 0, DPR, 0, 0);
   cx.fillStyle = 'rgba(0,0,0,.6)';
-  if (OX > 0.5) { cx.fillRect(0, 0, OX, H); cx.fillRect(OX + VW * SC, 0, W - OX - VW * SC, H); }
+  if (OX > 0.5) { cx.fillRect(0, 0, OX, H); cx.fillRect(OX + VWV * SC, 0, W - OX - VWV * SC, H); }
 }
 
 function render(tm) {
@@ -207,7 +216,7 @@ function render(tm) {
   if (st === 'menu' || !Game.L) { drawMenuBg(tm); return; }
   if (st === 'done' && Game.rec.length) { renderReplay(tm); return; }
   const L = Game.L, P = Game.P, sk = curSkin();
-  const camX = P.x - PX;
+  const camX = P.x - PXV;
   let shx = 0, shy = 0;
   if (Game.shake > .1 && D().set.shake) { shx = (Math.random() - .5) * Game.shake; shy = (Math.random() - .5) * Game.shake; }
   drawBg(L.w, camX, tm);
@@ -239,9 +248,9 @@ function drawMenuBg(tm) {
     const p = silPath(w, layer), off = -((camX * f) % 1600);
     cx.fillStyle = rgba(Wd.ed, a); cx.save(); cx.translate(off, 0); cx.fill(p); cx.translate(1600, 0); cx.fill(p); cx.restore();
   }
-  cx.fillStyle = Wd.gr; cx.fillRect(-OX / SC, G, VW + 2 * OX / SC, (H - OY) / SC - G + 10);
-  cx.fillStyle = Wd.ed; cx.fillRect(-OX / SC, G, VW + 2 * OX / SC, 3);
-  const bx = PX + 40, by = G - PR - Math.abs(Math.sin(tm * 3)) * 70;
+  cx.fillStyle = Wd.gr; cx.fillRect(-OX / SC, G, VWV + 2 * OX / SC, (H - OY) / SC - G + 10);
+  cx.fillStyle = Wd.ed; cx.fillRect(-OX / SC, G, VWV + 2 * OX / SC, 3);
+  const bx = PXV + 40, by = G - PR - Math.abs(Math.sin(tm * 3)) * 70;
   drawBall(bx, by, curSkin(), tm, tm * 6);
 }
 
@@ -251,7 +260,7 @@ function renderReplay(tm) {
   const maxN = Math.max(...Game.rec.map(r => r.n));
   Game.rt += 1.25; if (Game.rt > maxN + 90) Game.rt = 0;
   const t = Math.min(Math.floor(Game.rt), maxN);
-  const x = L.sp * t, camX = x - PX;
+  const x = L.sp * t, camX = x - PXV;
   drawBg(L.w, camX, tm); worldTf();
   drawWorld(L, camX, t, tm, {});
   cx.save(); cx.translate(-camX, 0);
@@ -283,6 +292,9 @@ function frame(now) {
     let n = 0;
     while (Game.acc >= DT && n < 6 && Game.state === 'play') { tick(); Game.acc -= DT; n++; }
     if (n === 6) Game.acc = 0;
+  } else if (Game.state === 'clear') {
+    Game.clearT += el; Game.P.x += Game.L.sp * 60 * el; Game.spin += Game.L.sp * .034 * 60 * el;
+    if (Game.clearT > 1.7) goNext();
   } else if (Game.state === 'dying' || Game.state === 'over') {
     Game.dieT -= el;
     if (Game.state === 'dying' && Game.dieT <= 0) afterDeath();
@@ -348,7 +360,7 @@ function hud() {
     const m = Math.floor(P.x / METER), best = L.mode === 'daily' ? ((D().st.daily[Game.day] || {}).best || 0) : D().st.endBest;
     setTxt('hName', m + ' m');
     setTxt('hSub', 'RECORD ' + best + ' m');
-    setTxt('hPct', 'x' + (L.spAt(P.x) / 4).toFixed(2));
+    setTxt('hPct', 'x' + (L.spAt(P.x) / 5.6).toFixed(2));
     $('progF').style.width = (best ? Math.min(100, m / best * 100) : 0) + '%'; $('progB').style.left = '100%';
     setTxt('hDeaths', String(L.mode === 'daily' ? ((D().st.daily[Game.day] || {}).tries || 0) : D().st.endRuns));
   }
@@ -357,13 +369,13 @@ function hud() {
 // ── DÉROULÉ D'UNE PARTIE ─────────────────────────────────────────
 function startStory(i, practice) {
   Game.mode = 'story'; Game.lvl = i; Game.L = genStory(i); Game.deaths = 0; Game.attempt = 1;
-  Game.practice = !!practice; Game.rec = []; Game.cps = []; Game.cp = null;
+  Game.practice = !!practice; Game.rec = []; Game.cps = []; Game.cp = null; Game.introShown = false;
   timeFlags(); begin();
 }
-function startEndless(daily) {
+function startEndless(daily, retry) {
   Game.mode = daily ? 'daily' : 'endless'; Game.day = today();
   Game.seed = daily ? hashStr('DAILY' + Game.day) : (Math.random() * 4294967296) >>> 0;
-  Game.L = newEndless(Game.seed, daily); Game.practice = false; Game.rec = []; Game.cps = [];
+  Game.L = newEndless(Game.seed, daily); Game.practice = false; Game.rec = []; Game.cps = []; Game.attempt = 1; Game.introShown = !!retry;
   timeFlags(); begin();
 }
 function begin(fromCp) {
@@ -380,6 +392,11 @@ function begin(fromCp) {
   showScr(null); $('hud').classList.remove('off'); hudCache = {};
   Game.state = 'play'; resize();
   Snd.start(L.mode === 'story' ? hashStr('M' + L.i) : Game.seed, L.bpm, L.mode === 'story' ? L.w : 6, L.boss, Game.t / 60);
+  if (!fromCp && Game.attempt === 1 && !Game.introShown) {
+    Game.introShown = true;
+    if (L.mode === 'story') banner(levelLabel(L), Game.practice ? 'ENTRAÎNEMENT' : `CHAPITRE ${L.w + 1} · ${WORLDS[L.w].n}`, 1400);
+    else banner(L.mode === 'daily' ? 'DÉFI DU JOUR' : 'ENDLESS', 'TAPE POUR SAUTER', 1100);
+  }
 }
 function restart(byKey) {
   if (!Game.L) return;
@@ -421,19 +438,14 @@ function afterDeath() {
 function win() {
   const L = Game.L, d = D();
   Snd.stop(); Snd.sfx('win');
-  Game.state = 'done'; $('hud').classList.add('off'); $('rot').classList.add('off');
+  Game.state = 'clear'; Game.clearT = 0; $('hud').classList.add('off');
   burst(Game.P.x, Game.P.y, 30, '#ffd84a', 6);
+  let line2;
   if (Game.practice) {
     d.st.practiceDone++;
-    $('dStars').innerHTML = '<i>★★★</i>';
-    $('dTitle').textContent = `${L.boss ? L.name : 'NIVEAU ' + L.name} · ENTRAÎNEMENT`;
-    $('dDeaths').textContent = 'RÉUSSI';
-    $('dSub').textContent = 'Le mode entraînement ne compte pas. Passe en vrai pour valider le niveau.';
-    $('bNext').textContent = 'EN VRAI'; $('bNext').onclick = () => startStory(L.i, false);
-    $('dReplay').classList.add('off');
-    Game.rec = [];
+    line2 = 'ENTRAÎNEMENT RÉUSSI · MAINTENANT EN VRAI';
+    Game.next = () => startStory(L.i, false);
   } else {
-    if (Game.cur) { Game.cur.win = true; Game.rec.push(Game.cur); }
     const l = d.lv[L.i] || (d.lv[L.i] = { done: false, best: 0, pct: 0 });
     const first = !l.done, improved = first || Game.deaths < l.best;
     l.pct = 1; if (improved) l.best = Game.deaths; l.done = true;
@@ -441,21 +453,23 @@ function win() {
     if (Game.deaths === 13) d.fl.ex13 = 1;
     if (!Game.usedDj && L.i >= 10) d.fl.nodj = 1;
     if (!d.set.music && !d.set.sfx) d.fl.silent = 1;
-    const s = starsOf(l), sNow = Game.deaths === 0 ? 3 : Game.deaths <= 5 ? 2 : 1;
-    $('dStars').innerHTML = '★'.repeat(sNow) + '<i>' + '★'.repeat(3 - sNow) + '</i>';
-    $('dTitle').textContent = L.boss ? `BOSS ${L.w + 1} · ${L.name}` : `NIVEAU ${L.name} · ${WORLDS[L.w].n}`;
-    $('dDeaths').textContent = Game.deaths === 0 ? 'SANS MORT' : `${Game.deaths} MORT${Game.deaths > 1 ? 'S' : ''}`;
-    $('dSub').textContent = first ? 'Niveau validé' : improved ? 'Nouveau record' : `Record : ${l.best} mort${l.best > 1 ? 's' : ''}`;
-    const nxt = L.i < 99;
-    $('bNext').textContent = nxt ? 'SUIVANT' : 'CHAPITRES'; $('bNext').onclick = () => nxt ? startStory(L.i + 1) : openScr('story');
-    $('dReplay').classList.toggle('off', Game.rec.length < 2);
+    const sNow = Game.deaths === 0 ? 3 : Game.deaths <= 5 ? 2 : 1;
+    line2 = '★'.repeat(sNow) + '☆'.repeat(3 - sNow) + '  ' + (Game.deaths === 0 ? 'SANS MORT' : `${Game.deaths} MORT${Game.deaths > 1 ? 'S' : ''}`) + (!first && improved ? ' · RECORD' : '');
     if (improved) submitStory();
+    Game.next = L.i < 99 ? () => startStory(L.i + 1) : () => { quitToMenu(); openScr('story'); banner('FÉLICITATIONS', 'LES 100 NIVEAUX SONT TERMINÉS', 3000); };
   }
-  Game.rt = 0;
+  banner(levelLabel(L) + ' ✓', line2, 1500);
   Save.save();
-  setTimeout(() => { if (Game.state === 'done') showScr('s-done'); }, 450);
   checkAch();
 }
+function levelLabel(L) { return L.boss ? `BOSS · ${L.name}` : `NIVEAU ${L.name}`; }
+let bannerTimer = 0;
+function banner(t, s, ms) {
+  const b = $('banner'); b.querySelector('.t').textContent = t; b.querySelector('.s').textContent = s || '';
+  b.classList.remove('off', 'out'); void b.offsetWidth; b.classList.add('in');
+  clearTimeout(bannerTimer); bannerTimer = setTimeout(() => b.classList.add('out'), ms);
+}
+function goNext() { if (Game.state === 'clear' && Game.next) { const f = Game.next; Game.next = null; f(); } }
 
 function endRun() {
   const L = Game.L, m = Math.floor(Game.P.x / METER), s = D().st;
@@ -473,18 +487,18 @@ function endRun() {
   }
   if (m < 10) s.fastDeaths++;
   Save.save();
-  $('oTitle').textContent = L.mode === 'daily' ? `DÉFI DU ${Game.day.split('-').reverse().join('/')}` : 'ENDLESS';
-  $('oDist').textContent = m + ' m';
-  $('oSub').textContent = rec ? 'NOUVEAU RECORD !' : `Record : ${best} m`;
-  $('oRank').textContent = '';
   Game.lastRun = { m, rec };
-  setTimeout(() => { if (Game.state === 'dying') { Game.state = 'over'; $('hud').classList.add('off'); $('rot').classList.add('off'); showScr('s-over'); } }, 650);
+  setTimeout(() => {
+    if (Game.state !== 'dying') return;
+    startEndless(L.mode === 'daily', true);
+    banner(m + ' m', rec ? 'NOUVEAU RECORD !' : `RECORD ${best} m`, 1300);
+  }, 550);
   if (rec) {
     const mode = L.mode, day = mode === 'daily' ? Game.day : 'all';
     const tries = mode === 'daily' ? s.daily[Game.day].tries : s.endRuns;
     LB.submit(mode, day, best, tries).then(ok => ok && LB.rank(mode, day, best)).then(rk => {
       if (!rk) return;
-      $('oRank').textContent = `Classement mondial : ${rk}e`;
+      toastMsg(`Classement mondial : ${rk}e`);
       if (mode === 'endless') { if (rk <= 100) D().fl.top100 = 1; if (rk <= 10) D().fl.top10 = 1; checkAch(); Save.save(); }
     });
   }
@@ -507,7 +521,7 @@ function resume() {
   showScr(null); Game.state = 'play'; Game.acc = 0; Game.last = 0;
   Snd.start(Game.mode === 'story' ? hashStr('M' + Game.L.i) : Game.seed, Game.L.bpm, Game.mode === 'story' ? Game.L.w : 6, Game.L.boss, Game.t / 60);
 }
-function quitToMenu() { Snd.stop(); Game.state = 'menu'; Game.L = null; $('hud').classList.add('off'); $('rot').classList.add('off'); Save.save(); openScr('home'); }
+function quitToMenu() { Snd.stop(); Game.state = 'menu'; Game.L = null; $('hud').classList.add('off');  Save.save(); openScr('home'); }
 
 function timeFlags() {
   const h = new Date().getHours();
@@ -674,7 +688,7 @@ function toastMsg(m) { const el = document.createElement('div'); el.className = 
 // ── ENTRÉES ──────────────────────────────────────────────────────
 function pressStart() { if (Game.state === 'play') { Inp.queued = true; Inp.down = true; } }
 function pressEnd() { Inp.down = false; }
-cv.addEventListener('pointerdown', e => { Snd.unlock(); pressStart(); });
+cv.addEventListener('pointerdown', e => { Snd.unlock(); if (Game.state === 'clear' && Game.clearT > .45) goNext(); else pressStart(); });
 addEventListener('pointerup', pressEnd); addEventListener('pointercancel', pressEnd); addEventListener('blur', pressEnd);
 const JUMP_KEYS = ['Space', 'ArrowUp', 'KeyW', 'KeyZ'];
 addEventListener('keydown', e => {
@@ -683,8 +697,8 @@ addEventListener('keydown', e => {
     e.preventDefault(); if (e.repeat) return; Snd.unlock();
     if (Game.state === 'play') pressStart();
     else if (Game.state === 'over') restart();
-    else if (Game.state === 'done' && !$('s-done').classList.contains('off')) $('bNext').click();
-  } else if (e.code === 'KeyR' && !e.repeat) { if (['play', 'dying', 'over', 'done', 'pause'].includes(Game.state)) restart(true); }
+    else if (Game.state === 'clear' && Game.clearT > .45) goNext();
+  } else if (e.code === 'KeyR' && !e.repeat) { if (['play', 'dying', 'over', 'pause'].includes(Game.state)) restart(true); }
   else if ((e.code === 'Escape' || e.code === 'KeyP') && !e.repeat) { if (Game.state === 'play') pause(); else if (Game.state === 'pause') resume(); }
 });
 addEventListener('keyup', e => { if (JUMP_KEYS.includes(e.code)) pressEnd(); });
@@ -709,6 +723,7 @@ $('bMenu2').onclick = quitToMenu;
 $('bAgain').onclick = () => startEndless(Game.mode === 'daily');
 $('s-over').addEventListener('pointerdown', e => { if (e.target === $('s-over')) startEndless(Game.mode === 'daily'); });
 $('bShare1').onclick = () => { const L = Game.L; share(`⚡ BoltBall : ${L.boss ? 'boss ' + L.name : 'niveau ' + L.name} terminé ${Game.deaths === 0 ? 'sans mourir' : 'en ' + Game.deaths + ' mort' + (Game.deaths > 1 ? 's' : '')}. Tu fais mieux ?`); };
+$('bShare3').onclick = () => Game.mode === 'story' ? share(`⚡ BoltBall : je suis au ${levelLabel(Game.L).toLowerCase()}. Tu fais mieux ?`) : share(`⚡ BoltBall : record ${Game.mode === 'daily' ? ((D().st.daily[Game.day] || {}).best || 0) + ' m au défi du jour' : D().st.endBest + ' m en Endless'}. Bats-moi !`);
 $('bShare2').onclick = () => share(`⚡ BoltBall : ${Game.lastRun ? Game.lastRun.m : 0} m ${Game.mode === 'daily' ? 'au défi du jour' : 'en Endless'}. Bats-moi !`);
 document.querySelectorAll('#collTabs button').forEach(b => b.onclick = () => { collF = b.dataset.f; document.querySelectorAll('#collTabs button').forEach(x => x.classList.toggle('on', x === b)); buildColl(); });
 document.querySelectorAll('#lbTabs button').forEach(b => b.onclick = () => loadLb(b.dataset.m));
