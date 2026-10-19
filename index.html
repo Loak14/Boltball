@@ -297,38 +297,66 @@ const WORLDS = [
 ];
 const BOSS = ['LE GARDIEN', 'LE NŒUD', 'LA GRANDE LAME', 'LE LÉVIATHAN', 'LE MIRAGE', 'LA PRESSE', 'LE VOILE', 'L’ABSENCE', 'LE BRASIER', 'L’ÉCLAIR'];
 
-// Niveau d'apparition de chaque type de passage
-const UNLOCK = { spk: 0, gap: 0, spk2: 1, plt: 2, saw: 4, gap2: 5, wal: 6, combo: 8, mpl: 10, fsaw: 12, pad: 14, orb: 20, msaw: 22, combo3: 26, ceil: 30, bed: 32 };
+// Niveau d'apparition de chaque type de passage (tout est disponible dès le chapitre 3)
+const UNLOCK = { spk: 0, gap: 0, spk2: 0, spkL: 1, sawrow: 2, plt: 2, saw: 3, gap2: 3, islands: 4, wal: 5, combo: 5, stairs: 7, wal2: 9, mpl: 10, fsaw: 11, pad: 12, combo3: 13, orb: 15, msaw: 16, ceil: 18, zig: 19, bed: 20 };
 const NEWSIGN = {
-  plt: 'PLATEFORME : POSE-TOI DESSUS', saw: 'SCIE : SAUTE PAR-DESSUS', gap2: 'GRAND TROU : DOUBLE SAUT',
-  wal: 'MUR : PASSE PAR L’OUVERTURE', mpl: 'PLATEFORME MOBILE', fsaw: 'SCIE HAUTE : NE SAUTE PAS',
-  pad: 'TREMPLIN : LAISSE-TOI PORTER', orb: 'ORBE : RECHARGE TON DOUBLE SAUT', msaw: 'SCIE MOBILE : TROUVE LE TEMPO',
-  ceil: 'PLAFOND BAS : RESTE AU SOL', bed: 'LIT DE PIQUES : DE PLATEFORME EN PLATEFORME',
+  spkL: 'LONGUES PIQUES : DOUBLE SAUT', sawrow: 'SCIES EN SÉRIE', plt: 'PLATEFORME : POSE-TOI DESSUS', saw: 'SCIE : SAUTE PAR-DESSUS',
+  gap2: 'GRAND TROU : DOUBLE SAUT', islands: 'ÎLOTS : ATTERRIS PILE', wal: 'MUR : PASSE PAR L’OUVERTURE', stairs: 'ESCALIER', wal2: 'DOUBLE MUR',
+  mpl: 'PLATEFORME MOBILE', fsaw: 'SCIE HAUTE : NE SAUTE PAS', pad: 'TREMPLIN : LAISSE-TOI PORTER', orb: 'ORBE : RECHARGE TON DOUBLE SAUT',
+  msaw: 'SCIE MOBILE : TROUVE LE TEMPO', ceil: 'PLAFOND BAS : RESTE AU SOL', zig: 'PLAFOND + PIQUES', bed: 'LIT DE PIQUES',
 };
 
-// Difficulté : palier fort à chaque chapitre (après chaque boss), rampe dans le chapitre,
-// et boss nettement plus long et plus dense.
-const CH_D = [.22, .45, .6, .7, .78, .84, .89, .93, .96, .98];
+// Mode hardcore : départ déjà nerveux, gros palier après chaque boss, boss long et brutal
+const CH_D = [.3, .55, .7, .8, .86, .9, .93, .96, .98, 1];
 function storyParams(i) {
   const w = Math.floor(i / 10), k = i % 10, boss = k === 9;
-  let d = w === 0 && k < 4 ? .04 + k * .05 : CH_D[w] + k * .014;
-  let rest = w === 0 ? (k < 4 ? 2.4 - k * .25 : 1.3 - (k - 4) * .05) : Math.max(.45, 1.1 * Math.pow(.85, w) - k * .03);
-  let sp = 5.2 + w * .3 + k * .02;
-  let dur = 10 + w * 1.2 + k * .25;
-  if (boss) { d += .1; rest *= .75; sp += .25; dur = Math.min(48, dur * 2.2); }
+  let d = CH_D[w] + k * .02;
+  let rest = Math.max(.15, .9 * Math.pow(.72, w) - k * .04);
+  let sp = 6.2 + w * .32 + k * .03;
+  let dur = 13 + w * 1.4 + k * .3;
+  if (boss) { d += .15; rest *= .5; sp += .4; dur = Math.min(60, dur * 2.6); }
   const name = boss ? BOSS[w] : `${w + 1}-${k + 1}`;
-  return { mode: 'story', i, w, boss, d: clamp(d, 0, 1), rest, sp: +sp.toFixed(2), bpm: WORLDS[w].bpm, dur, name, lvlEq: i, comboW: (w >= 1 ? .5 + w * .35 : .3) * (boss ? 2 : 1) };
+  return { mode: 'story', i, w, boss, d: clamp(d, 0, 1), rest, sp: +sp.toFixed(2), bpm: WORLDS[w].bpm, dur, name, lvlEq: i, comboW: (.8 + w * .4) * (boss ? 2.2 : 1) };
 }
 
 // ── PASSAGES (chunks) ────────────────────────────────────────────
 // c = { sp, d, R1 (portée d'un saut simple), B (unités par temps), r (aléatoire), q (quantification) }
 const CH = {
   spk(x, c) {
-    const n = Math.max(2, Math.round(c.R1 * lerp(.2, .46, c.d * (.5 + .5 * c.r())) / 22));
+    const n = Math.max(2, Math.round(c.R1 * lerp(.15, .7, c.d * (.3 + .7 * c.r())) / 22));
     return { obs: [{ t: 'spk', x, w: n * 22 }], end: x + n * 22 };
   },
+  spkL(x, c) {
+    const n = Math.max(6, Math.round(c.R1 * lerp(.85, 1.3, c.d * c.r()) / 22));
+    return { obs: [{ t: 'spk', x, w: n * 22 }], end: x + n * 22 };
+  },
+  sawrow(x, c) {
+    const n = 2 + Math.floor(c.r() * (1 + c.d * 2.5)), ob = []; let cx = x;
+    for (let k = 0; k < n; k++) { const s = CH.saw(cx, c); ob.push(...s.obs); cx = c.q(s.end + c.R1 * lerp(.75, .5, c.d)); }
+    return { obs: ob, end: ob[ob.length - 1].x + ob[ob.length - 1].r };
+  },
+  islands(x, c) {
+    const n = 2 + Math.floor(c.r() * (1 + c.d * 2)), gaps = []; let cx = x;
+    for (let k = 0; k < n; k++) { const w = Math.round(c.R1 * lerp(.35, .6, c.d * c.r())); gaps.push({ x: cx, w }); cx += w + Math.round(lerp(90, 46, c.d)); }
+    return { obs: [], gaps, end: cx - Math.round(lerp(90, 46, c.d)) };
+  },
+  stairs(x, c) {
+    const n = 3 + Math.floor(c.r() * 2), pw = Math.round(lerp(110, 80, c.d)), step = Math.round(c.R1 * lerp(.62, .72, c.d));
+    const ob = [], W = step * n + pw;
+    ob.push({ t: 'spk', x, w: Math.floor(W / 22) * 22 });
+    for (let k = 0; k < n; k++) ob.push({ t: 'plt', x: Math.round(x + step * (k + .5)), y: G - Math.min(150, 55 + k * 30), w: pw, h: 14 });
+    return { obs: ob, end: x + Math.floor(W / 22) * 22 };
+  },
+  wal2(x, c) {
+    const a = CH.wal(x, c), b = CH.wal(c.q(x + c.R1 * lerp(.85, .6, c.d)), c);
+    return { obs: a.obs.concat(b.obs), end: b.end };
+  },
+  zig(x, c) {
+    const s1 = CH.spk(x, c), cl = CH.ceil(c.q(s1.end + c.R1 * .35), c);
+    return { obs: s1.obs.concat(cl.obs), end: cl.end };
+  },
   gap(x, c) {
-    const w = Math.round(c.R1 * lerp(.3, .58, c.d * (.4 + .6 * c.r())));
+    const w = Math.round(c.R1 * lerp(.3, .62, c.d * (.4 + .6 * c.r())));
     return { obs: [], gaps: [{ x, w }], end: x + w };
   },
   spk2(x, c) {
@@ -353,7 +381,7 @@ const CH = {
     const low = c.r() < .3;
     const gh = Math.round(2 * PR + lerp(74, 40, c.d));
     const L = low ? 0 : Math.round(lerp(40, 115, c.r()));
-    return { obs: [{ t: 'wal', x, gs: G - L - gh, gh }], end: x + WALL_W };
+    return { obs: [{ t: 'wal', x, gs: G - L - gh, gh }], end: Math.round(x + WALL_W + (L > 0 ? c.R1 * .3 : 0)) };
   },
   mpl(x, c) {
     const w = Math.round(c.R1 * lerp(1.2, 1.5, c.d * c.r()));
@@ -373,10 +401,10 @@ const CH = {
     const ay = G - PR - (PADV * PADV / (2 * GRAV) - PADV / 2);
     const gh = Math.round(2 * PR + lerp(92, 58, c.d));
     const wx = Math.round(x + pw / 2 + c.sp * ta - WALL_W / 2);
-    return { obs: [{ t: 'pad', x, w: pw }, { t: 'wal', x: wx, gs: Math.round(ay - gh / 2), gh }], end: wx + WALL_W };
+    return { obs: [{ t: 'pad', x, w: pw }, { t: 'wal', x: wx, gs: Math.round(ay - gh / 2), gh }], end: Math.round(wx + WALL_W + c.sp * 22) };
   },
   orb(x, c) {
-    const w = Math.round(c.R1 * lerp(1.7, 2.0, c.d * c.r()));
+    const w = Math.round(c.R1 * lerp(1.55, 1.85, c.d * c.r()));
     return { obs: [{ t: 'orb', x: Math.round(x + w * .5), y: G - 120 }], gaps: [{ x, w }], end: x + w };
   },
   msaw(x, c) {
@@ -405,7 +433,7 @@ const CH = {
     return { obs: a.obs.concat(b.obs), gaps: (a.gaps || []).concat(b.gaps || []), end: b.end };
   },
   combo(x, c) {
-    const pool = ['spk', 'gap', 'saw', 'wal', 'msaw', 'fsaw', 'gap2', 'ceil'].filter(t => !c.unl || c.unl.includes(t));
+    const pool = ['spk', 'gap', 'saw', 'wal', 'msaw', 'fsaw', 'gap2', 'ceil', 'spkL', 'sawrow', 'islands', 'plt', 'mpl'].filter(t => !c.unl || c.unl.includes(t));
     const a = CH[pool[Math.floor(c.r() * pool.length)]](x, c);
     const b = CH[pool[Math.floor(c.r() * pool.length)]](c.q(a.end + Math.max(c.B * lerp(1.5, .9, c.d), c.R1 * lerp(.9, .55, c.d))), c);
     return { obs: a.obs.concat(b.obs), gaps: (a.gaps || []).concat(b.gaps || []), end: b.end };
@@ -448,10 +476,13 @@ function genStory(i, fix) {
   const p = storyParams(i);
   if (fix === undefined) fix = (typeof SEEDFIX !== 'undefined' && SEEDFIX[i]) || 0;
   const rng = rngOf(hashStr('BOLT' + i + '_' + fix));
-  const c = chunkCtx(rng, p.sp, p.d, p.bpm);
+  let c = chunkCtx(rng, p.sp, p.d, p.bpm);
   c.unl = Object.keys(UNLOCK).filter(t => UNLOCK[t] <= i);
   const len = Math.round(p.sp * 60 * p.dur);
-  const L = { ...p, len, obs: [], gaps: [], spAt: () => p.sp };
+  const L = { ...p, len, obs: [], gaps: [] };
+  // Boss : la seconde moitié accélère de 12 %
+  L.spAt = p.boss ? (x => x > len / 2 ? p.sp * 1.12 : p.sp) : (() => p.sp);
+  let phase2 = false;
   let x = c.q(c.B * 4), last = null, first = true;
   const fresh = Object.keys(NEWSIGN).find(t => UNLOCK[t] === i);
   if (i === 0) L.obs.push({ t: 'sign', x: 60, txt: 'TAPE OU ESPACE : SAUT' });
@@ -463,33 +494,35 @@ function genStory(i, fix) {
     const res = CH[type](x, c);
     if (res.end > len - c.B * 2) break;
     L.obs.push(...res.obs); if (res.gaps) L.gaps.push(...res.gaps);
+    if (p.boss && !phase2 && x > len / 2) { phase2 = true; const u = c.unl; c = chunkCtx(rng, p.sp * 1.12, Math.min(1, p.d + .05), p.bpm); c.unl = u; }
     const rest = p.rest * (1 + rng() * .45);
-    x = c.q(res.end + Math.max(rest * c.B, c.R1 * Math.max(.32, .55 - p.w * .03)));
+    x = c.q(res.end + Math.max(rest * c.B, c.R1 * Math.max(.28, .45 - p.w * .03)));
     last = type; first = false;
   }
   return finalize(L);
 }
 
 // ── ENDLESS (flux infini) ────────────────────────────────────────
-function endlessSp(x) { return 5.6 + 2.6 * Math.min(1, x / 50000) + .6 * clamp((x - 50000) / 60000, 0, 1); }
-function endlessD(x) { return Math.min(1, x / 30000); }
+function endlessSp(x) { return 6.5 + 2.6 * Math.min(1, x / 40000) + 1 * clamp((x - 40000) / 60000, 0, 1); }
+function endlessD(x) { return Math.min(1, .25 + x / 25000); }
 function newEndless(seed, daily) {
-  const L = { mode: daily ? 'daily' : 'endless', i: -1, w: 0, boss: false, sp: 5.6, bpm: 132, len: Infinity, obs: [], gaps: [], ci: 0, gi: 0,
+  const L = { mode: daily ? 'daily' : 'endless', i: -1, w: 0, boss: false, sp: 6.5, bpm: 132, len: Infinity, obs: [], gaps: [], ci: 0, gi: 0,
     name: daily ? 'DÉFI DU JOUR' : 'ENDLESS', spAt: endlessSp, rng: rngOf(seed), gx: 0, last: null };
-  L.gx = 4 * 5.6 * 3600 / 132;
+  L.gx = 3 * 6.5 * 3600 / 132;
   extendEndless(L, 2500);
   return L;
 }
 function extendEndless(L, upto) {
   let added = false;
   while (L.gx < upto) {
-    const sp = endlessSp(L.gx), d = endlessD(L.gx), lvlEq = Math.min(99, 4 + d * 70);
+    const sp = endlessSp(L.gx), d = endlessD(L.gx), lvlEq = Math.min(99, 2 + d * 25);
     const c = chunkCtx(L.rng, sp, d, L.bpm);
-    const type = pickChunk(L.rng, lvlEq, L.last);
+    c.unl = Object.keys(UNLOCK).filter(t => UNLOCK[t] <= lvlEq);
+    const type = pickChunk(L.rng, lvlEq, L.last, .8 + d * 2.5);
     const res = CH[type](c.q(L.gx), c);
     for (const o of res.obs) L.obs.push(o);
     if (res.gaps) for (const g of res.gaps) L.gaps.push(g);
-    L.gx = res.end + Math.max(lerp(3, 1.6, d) * c.B + L.rng() * c.B, c.R1 * .55);
+    L.gx = res.end + Math.max(lerp(1.1, .25, d) * c.B * (1 + L.rng() * .5), c.R1 * lerp(.45, .3, d));
     L.last = type; added = true;
   }
   if (added) {
@@ -616,7 +649,7 @@ function step(L, P, t, press, down) {
 if (false) module.exports = { VW, VH, G, PR, PX, METER, WORLDS, BOSS, UNLOCK, storyParams, genStory, newEndless, extendEndless, pruneEndless, endlessSp, newPlayer, clonePlayer, step, rngOf, hashStr, mplY, msawY };
 
 // Généré par tools/solve.js : variante de graine validée pour chaque niveau
-const SEEDFIX = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0];
+const SEEDFIX = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
 
 // ════════════════════════════════════════════════════════════════
 //  AUDIO : séquenceur musical par monde + effets sonores
@@ -1622,7 +1655,7 @@ function hud() {
     const m = Math.floor(P.x / METER), best = L.mode === 'daily' ? ((D().st.daily[Game.day] || {}).best || 0) : D().st.endBest;
     setTxt('hName', m + ' m');
     setTxt('hSub', 'RECORD ' + best + ' m');
-    setTxt('hPct', 'x' + (L.spAt(P.x) / 5.6).toFixed(2));
+    setTxt('hPct', 'x' + (L.spAt(P.x) / 6.5).toFixed(2));
     $('progF').style.width = (best ? Math.min(100, m / best * 100) : 0) + '%'; $('progB').style.left = '100%';
     setTxt('hDeaths', String(L.mode === 'daily' ? ((D().st.daily[Game.day] || {}).tries || 0) : D().st.endRuns));
   }

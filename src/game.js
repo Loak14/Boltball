@@ -360,7 +360,7 @@ function hud() {
     const m = Math.floor(P.x / METER), best = L.mode === 'daily' ? ((D().st.daily[Game.day] || {}).best || 0) : D().st.endBest;
     setTxt('hName', m + ' m');
     setTxt('hSub', 'RECORD ' + best + ' m');
-    setTxt('hPct', 'x' + (L.spAt(P.x) / 5.6).toFixed(2));
+    setTxt('hPct', 'x' + (L.spAt(P.x) / 6.5).toFixed(2));
     $('progF').style.width = (best ? Math.min(100, m / best * 100) : 0) + '%'; $('progB').style.left = '100%';
     setTxt('hDeaths', String(L.mode === 'daily' ? ((D().st.daily[Game.day] || {}).tries || 0) : D().st.endRuns));
   }
