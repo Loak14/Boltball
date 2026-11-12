@@ -34,11 +34,12 @@ h3{font-size:.9rem;letter-spacing:.12em;color:#fff;margin:4px 0}
 .tabs button.on,#chTabs button.on{background:var(--red);color:#fff;border-color:var(--red)}
 #chTabs{display:flex;gap:5px;flex-wrap:wrap;justify-content:center;max-width:560px}
 #chTabs button.lk{opacity:.35}
-#lvGrid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;width:min(520px,100%)}
-.lc{aspect-ratio:1/.95;border-radius:12px;background:var(--card);border:1.5px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;position:relative}
+#lvGrid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;width:min(520px,100%)}
+.lc{min-height:74px;padding:6px 2px;overflow:hidden;white-space:nowrap;border-radius:12px;background:var(--card);border:1.5px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;position:relative}
 .lc b{font-size:1.05rem}
 .lc .st{color:var(--gold);font-size:.7rem;letter-spacing:.05em;font-family:Arial,sans-serif}
 .lc .st i{color:#333;font-style:normal}
+.lc .co{font:700 .58rem Arial,sans-serif;color:var(--gold)}
 .lc .dd{font:700 .58rem Arial,sans-serif;color:var(--mut)}
 .lc.done{border-color:var(--red)}
 .lc.boss{background:linear-gradient(160deg,#2a0610,#0d0d14)}
@@ -103,3 +104,8 @@ input[type=range]{accent-color:var(--red);width:150px}
 #banner.out{animation:bout .35s ease-in forwards}
 @keyframes bin{from{opacity:0;transform:scale(1.25)}to{opacity:1;transform:none}}
 @keyframes bout{from{opacity:1}to{opacity:0;transform:translateY(-14px)}}
+
+.toast.mini{align-self:center;padding:4px 12px 4px 6px;border-radius:99px;gap:6px;background:rgba(12,12,18,.8)}
+.toast.mini canvas{width:26px;height:26px}
+.toast.mini .k,.toast.mini .d{display:none}
+.toast.mini .t{font-size:.68rem;color:var(--gold)}

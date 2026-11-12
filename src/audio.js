@@ -56,7 +56,13 @@ const Snd = (() => {
     const bassRh = []; for (let i = 0; i < 16; i++) bassRh.push(i % 4 === 0 || (i % 2 === 0 && r() < .55) || (i % 4 === 3 && r() < .3));
     const arpShape = [0, 2, 4, 2, 4, 6, 4, 2].map(v => v + (r() < .3 ? 7 : 0));
     const kickX = []; for (let i = 0; i < 16; i++) kickX.push(i % 4 === 0 || (boss && i % 4 === 2) || (i === 14 && r() < .5));
-    return { root: W.root, scale, prog, bassRh, arpShape, kickX, lead: r() < .5 ? 'square' : 'triangle', boss };
+    const lead = r() < .5 ? 'square' : 'triangle';
+    // mélodie sur 2 mesures : notes longues sur les temps, quelques croches entre
+    const mel = []; let cur = 4;
+    for (let i = 0; i < 32; i++) {
+      if (i % 4 === 0 || (i % 2 === 0 && r() < .45)) { cur = clamp(cur + Math.floor(r() * 5) - 2, 0, 9); mel.push(cur); } else mel.push(null);
+    }
+    return { root: W.root, scale, prog, bassRh, arpShape, kickX, lead, boss, mel };
   }
   function noteOf(p, deg, oct) { const n = p.scale.length; const o = Math.floor(deg / n); return p.root + oct * 12 + o * 12 + p.scale[((deg % n) + n) % n]; }
 
@@ -68,11 +74,13 @@ const Snd = (() => {
     if (s % 2 === 1) nz(mus, t, .05, .13, 7000);
     if (p.boss && s % 2 === 0) nz(mus, t, .03, .06, 9000);
     if (p.bassRh[s]) bass(t, noteOf(p, deg, -2), sd * 1.7, .32);
-    if (bar >= 2) {
-      const a = p.arpShape[s % 8];
-      osc(mus, p.lead, hz(noteOf(p, deg + a, 0)), 0, t, sd * .9, .05, .002);
-    }
-    if (bar >= 4 && s % 8 === 0) osc(mus, 'triangle', hz(noteOf(p, deg + 4, 1)), 0, t, sd * 6, .035, .02);
+    // l'arpège joue dès la première mesure : on meurt souvent, l'intro doit déjà sonner plein
+    osc(mus, p.lead, hz(noteOf(p, deg + p.arpShape[s % 8], 0)), 0, t, sd * .9, bar >= 1 ? .05 : .04, .002);
+    if (s % 8 === 0) osc(mus, 'triangle', hz(noteOf(p, deg + 4, 1)), 0, t, sd * 6, .03, .02);
+    // la mélodie entre après 2 mesures et monte d'une octave toutes les 8
+    if (bar >= 2) { const m = p.mel[i % 32]; if (m !== null) osc(mus, 'sawtooth', hz(noteOf(p, deg + m, bar % 16 >= 8 ? 2 : 1)), 0, t, sd * 1.8, .028, .01); }
+    // roulement de caisse claire à la fin de chaque phrase de 4 mesures
+    if (bar % 4 === 3 && s >= 12) nz(mus, t, .08, .16 + (s - 12) * .05, 1500, 7000);
   }
   function tick() {
     if (!seq || !ac) return;
@@ -107,7 +115,8 @@ const Snd = (() => {
       if (!S.sfx || !ctx()) return;
       const t = ac.currentTime;
       switch (name) {
-        case 'jump': osc(sfx, 'sine', 300, 620, t, .12, .25); break;
+        case 'jump': { const v = 1 + (Math.random() - .5) * .08; osc(sfx, 'sine', 300 * v, 620 * v, t, .12, .25); break; }
+        case 'coin': [1319, 1760, 2637].forEach((f, k) => osc(sfx, 'triangle', f, 0, t + k * .05, .22, .16)); break;
         case 'djump': osc(sfx, 'sine', 480, 980, t, .13, .22); osc(sfx, 'triangle', 720, 1400, t, .1, .08); break;
         case 'land': osc(sfx, 'sine', 160, 90, t, .07, .12); break;
         case 'die': osc(sfx, 'sawtooth', 380, 40, t, .38, .3); nz(sfx, t, .3, .35, 200, 3000); break;

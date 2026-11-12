@@ -19,6 +19,8 @@ function chapter3pr(D, w) { let n = 0; for (let i = w * 10; i < w * 10 + 10; i++
 function bossFlaw(D) { for (let w = 0; w < 10; w++) { const l = D.lv[w * 10 + 9]; if (l && l.done && l.best === 0) return true; } return false; }
 function storyDeaths(D) { let n = 0; for (let i = 0; i < 100; i++) if (D.lv[i] && D.lv[i].done) n += D.lv[i].best; return n; }
 const unlockedCount = D => Object.keys(D.ach).length;
+function boltCount(D) { let n = 0; for (let i = 0; i < 100; i++) { let c = (D.lv[i] && D.lv[i].co) || 0; while (c) { n += c & 1; c >>= 1; } } return n; }
+const bolts = n => fn(D => boltCount(D) >= n, D => [Math.min(n, boltCount(D)), n]);
 
 const ACH = [
   // ── HISTOIRE ──
@@ -135,11 +137,17 @@ const ACH = [
   { id: 'logo', n: 'ÉCLAIR CACHÉ', d: 'Secret : le titre cache quelque chose', secret: true, sk: { p: 'bolt', c: ['#ff3333', '#a00000', '#300000'], x: '#ffe14d', g: 'rgba(255,50,50,.4)' }, ...flag('logo') },
   { id: 'silent', n: 'MIME', d: 'Secret : finir un niveau dans le silence complet', secret: true, sk: { p: 'stripes', c: ['#ffffff', '#111111', '#000'] }, ...flag('silent') },
   { id: 'god', n: 'DIEU DE L’ÉCLAIR', d: 'Finir le niveau 100 sans mourir', sk: { p: 'pulse', c: ['#ffffff', '#ffe14d', '#ff9900'], g: '#ffe14d', tr: 'rainbow' }, ok: D => !!(D.lv[99] && D.lv[99].done && D.lv[99].best === 0) },
-  { id: 'all', n: 'OMÉGA', d: 'Débloquer les 99 autres exploits', sk: { p: 'rainbow', c: ['#fff', '#fff', '#fff'], x: 55, g: 'rgba(255,255,255,.35)', tr: 'rainbow' }, ...fn(D => unlockedCount(D) >= 99, D => [Math.min(99, unlockedCount(D)), 99]) },
+  // ── ÉCLAIRS ──
+  { id: 'b10', n: 'ÉLECTRICIEN', d: 'Ramasser 10 éclairs', sk: { p: 'bolt', c: ['#fff8c0', '#ffd000', '#806000'], x: '#3a2a00' }, ...bolts(10) },
+  { id: 'b50', n: 'HAUTE TENSION', d: 'Ramasser 50 éclairs', sk: { p: 'neon', c: ['#ffe14d', '#ffffff', '#1a1400'], g: 'rgba(255,225,77,.3)', tr: 'gold' }, ...bolts(50) },
+  { id: 'b100', n: 'SURVOLTÉ', d: 'Ramasser 100 éclairs', sk: { p: 'plasma', c: ['#ffe14d', '#ff8a00', '#141000'], tr: 'gold' }, ...bolts(100) },
+  { id: 'b200', n: 'FOUDROYANT', d: 'Ramasser 200 éclairs', sk: { p: 'atom', c: ['#fffbe0', '#ffe14d', '#b08a00'], x: '#ffe14d', g: 'rgba(255,225,77,.35)', tr: 'gold' }, ...bolts(200) },
+  { id: 'b300', n: 'ZEUS', d: 'Ramasser les 300 éclairs', sk: { p: 'crown', c: ['#e8f4ff', '#7ab8ff', '#1a3a7a'], x: '#ffe14d', g: 'rgba(120,180,255,.45)', tr: 'rainbow' }, ...bolts(300) },
+  { id: 'all', n: 'OMÉGA', d: 'Débloquer tous les autres exploits', sk: { p: 'rainbow', c: ['#fff', '#fff', '#fff'], x: 55, g: 'rgba(255,255,255,.35)', tr: 'rainbow' }, ...fn(D => unlockedCount(D) >= ACH.length - 1, D => [Math.min(ACH.length - 1, unlockedCount(D)), ACH.length - 1]) },
 ];
 
 // Garde-fou : exactement 100 exploits, identifiants uniques
-if (ACH.length !== 100 || new Set(ACH.map(a => a.id)).size !== 100) console.warn('ACH: attendu 100 exploits uniques, obtenu', ACH.length);
+if (new Set(ACH.map(a => a.id)).size !== ACH.length) console.warn('ACH: identifiants en double');
 ACH.forEach(a => { a.sk.id = a.id; a.sk.n = a.n; });
 const SKINS = [BASE_SKIN, ...ACH.map(a => a.sk)];
 const skinById = id => SKINS.find(s => s.id === id) || BASE_SKIN;
