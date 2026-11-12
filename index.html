@@ -1475,7 +1475,7 @@ function drawSil(w, camX) {
   const Wd = WORLDS[w];
   for (const [layer, f, a] of [[0, .12, .07], [1, .35, .13]]) {
     const p = silPath(w, layer), off = -((camX * f) % 1600);
-    cx.fillStyle = rgba(Wd.ed, a + .05 * PULSE);
+    cx.fillStyle = rgba(Wd.ed, a + .02 * PULSE);
     cx.save(); cx.translate(off, 0); cx.fill(p); if (off + 1600 < VWV + 2) { cx.translate(1600, 0); cx.fill(p); } cx.restore();
   }
 }
@@ -1509,8 +1509,8 @@ function drawWorld(L, camX, t, tm, opts = {}) {
   const drawSeg = (a, b) => {
     if (b <= a) return;
     cx.fillStyle = Wd.gr; cx.fillRect(a, G, b - a, bot - G);
-    if (PULSE > .02) { cx.fillStyle = rgba(Wd.ed, .2 * PULSE); cx.fillRect(a, G + 3, b - a, 14 * PULSE); }
     cx.fillStyle = Wd.ed; cx.fillRect(a, G, b - a, 3);
+    if (PULSE > .05) { cx.fillStyle = `rgba(255,255,255,${.22 * PULSE})`; cx.fillRect(a, G, b - a, 3); } // le liseré s'éclaircit sur le temps, sans changer de taille
     cx.fillStyle = rgba(Wd.ed, .12); cx.beginPath();
     for (let gx = Math.ceil(a / 64) * 64; gx < b; gx += 64) cx.rect(gx, G + 3, 1, bot - G);
     cx.fill();
@@ -1578,7 +1578,7 @@ function drawObs(o, t, Wd, top, tm, P) {
       cx.fillStyle = '#d8d8e0'; cx.beginPath(); cx.arc(0, 0, o.r * .58, 0, TAU); cx.fill();
       cx.fillStyle = Wd.ob; cx.beginPath(); cx.arc(0, 0, o.r * .2, 0, TAU); cx.fill();
       cx.restore();
-      cx.strokeStyle = rgba(Wd.ob, .35 + .25 * PULSE); cx.lineWidth = 4 + 2 * PULSE; cx.beginPath(); cx.arc(o.x, y, o.r + 6 + 2 * PULSE, 0, TAU); cx.stroke();
+      cx.strokeStyle = rgba(Wd.ob, .35 + .15 * PULSE); cx.lineWidth = 4; cx.beginPath(); cx.arc(o.x, y, o.r + 6, 0, TAU); cx.stroke();
       break;
     }
     case 'wal': {
@@ -1861,7 +1861,6 @@ function tick() {
   else if (ev === 'orb') { Snd.sfx('orb'); D().st.orbs++; burst(P.x, P.y, 14, '#ff7ae6', 4); }
   else if (ev === 'pad') { Snd.sfx('pad'); D().st.pads++; Game.sx = .65; Game.sy = 1.5; }
   if (!wasG && P.onG && ev === '') { Game.sx = 1.32; Game.sy = .72; Snd.sfx('land'); dust(P.x, P.y + PR, 6, 2.4); }
-  else if (P.onG && Game.t % 5 === 0) dust(P.x - 8, P.y + PR, 1, .8);
 
   if (ev.startsWith('die')) return die(ev.slice(4));
   if (ev === 'win') return win();
