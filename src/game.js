@@ -2,13 +2,15 @@
 //  JEU : boucle, rendu, interface
 // ════════════════════════════════════════════════════════════════
 const $ = id => document.getElementById(id);
-const cv = $('c'), cx = cv.getContext('2d');
+const cv = $('c'), cx = cv.getContext('2d', { alpha: false });
+let DPRCAP = 2; // baisse automatiquement si l'appareil ne tient pas 60 images/s
 let W = 0, H = 0, DPR = 1, SC = 1, OX = 0, OY = 0, VWV = VW, PXV = PX;
 
 function resize() {
-  DPR = Math.min(2, window.devicePixelRatio || 1);
+  DPR = Math.min(DPRCAP, window.devicePixelRatio || 1);
   W = innerWidth; H = innerHeight;
-  cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+  const cw = Math.round(W * DPR), ch = Math.round(H * DPR);
+  if (cv.width !== cw || cv.height !== ch) { cv.width = cw; cv.height = ch; } // ne réalloue que si la taille change
   view(Game.L ? Game.vsp : 6.2);
 }
 // En portrait, la vue s'élargit avec la vitesse pour garder le même temps de réaction
@@ -60,11 +62,27 @@ function silPath(w, layer) {
 // ── RENDU ────────────────────────────────────────────────────────
 function lowerObs(L, x) { let lo = 0, hi = L.obs.length; while (lo < hi) { const m = lo + hi >> 1; if (L.obs[m].x0 < x) lo = m + 1; else hi = m; } return lo; }
 
+// Fond : le dégradé est peint une seule fois dans une image de la taille de l'écran,
+// puis recopié tel quel à chaque image (bien moins coûteux qu'un dégradé plein écran recalculé)
+let BGI = null, BGW = -1;
 function drawBg(w, camX, tm) {
+  if (BGW !== w || !BGI || BGI.width !== cv.width || BGI.height !== cv.height) {
+    if (!BGI) BGI = document.createElement('canvas');
+    BGI.width = cv.width; BGI.height = cv.height;
+    const g = BGI.getContext('2d', { alpha: false }), gr = g.createLinearGradient(0, 0, 0, cv.height);
+    gr.addColorStop(0, WORLDS[w].c1); gr.addColorStop(1, WORLDS[w].c2); g.fillStyle = gr; g.fillRect(0, 0, cv.width, cv.height);
+    BGW = w;
+  }
+  cx.setTransform(1, 0, 0, 1, 0, 0);
+  cx.drawImage(BGI, 0, 0);
+}
+function drawSil(w, camX) {
   const Wd = WORLDS[w];
-  cx.setTransform(DPR, 0, 0, DPR, 0, 0);
-  const g = cx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, Wd.c1); g.addColorStop(1, Wd.c2);
-  cx.fillStyle = g; cx.fillRect(0, 0, W, H);
+  for (const [layer, f, a] of [[0, .12, .07], [1, .35, .13]]) {
+    const p = silPath(w, layer), off = -((camX * f) % 1600);
+    cx.fillStyle = rgba(Wd.ed, a + .05 * PULSE);
+    cx.save(); cx.translate(off, 0); cx.fill(p); if (off + 1600 < VWV + 2) { cx.translate(1600, 0); cx.fill(p); } cx.restore();
+  }
 }
 
 function worldTf(shx = 0, shy = 0) { cx.setTransform(DPR * SC, 0, 0, DPR * SC, DPR * (OX + shx * SC), DPR * (OY + shy * SC)); }
@@ -72,22 +90,22 @@ function worldTf(shx = 0, shy = 0) { cx.setTransform(DPR * SC, 0, 0, DPR * SC, D
 function drawWorld(L, camX, t, tm, opts = {}) {
   const Wd = WORLDS[L.w] || WORLDS[0], top = -OY / SC - 20, bot = (H - OY) / SC + 20;
   // étoiles + décors
-  cx.fillStyle = 'rgba(255,255,255,.5)';
-  for (let i = 0; i < 46; i++) { const x = ((i * 173.3 - camX * .04) % VWV + VWV) % VWV, y = top + ((i * 97.7) % (G - top - 60)); cx.fillRect(x, y, i % 5 ? 1.2 : 2, i % 5 ? 1.2 : 2); }
-  for (const [layer, f, a] of [[0, .12, .07], [1, .35, .13]]) {
-    const p = silPath(L.w, layer), off = -((camX * f) % 1600);
-    cx.fillStyle = rgba(Wd.ed, a + .05 * PULSE);
-    cx.save(); cx.translate(off, 0); cx.fill(p); cx.translate(1600, 0); cx.fill(p); cx.restore();
-  }
+  cx.fillStyle = 'rgba(255,255,255,.5)'; cx.beginPath();
+  for (let i = 0; i < 46; i++) { const x = ((i * 173.3 - camX * .04) % VWV + VWV) % VWV, y = top + ((i * 97.7) % (G - top - 60)); cx.rect(x, y, i % 5 ? 1.2 : 2, i % 5 ? 1.2 : 2); }
+  cx.fill();
+  drawSil(L.w, camX);
   // lignes de vitesse
   const spd = opts.sp || 0;
   if (spd > 6.8) {
     cx.fillStyle = `rgba(255,255,255,${Math.min(.15, (spd - 6.8) * .05)})`;
-    for (let i = 0; i < 9; i++) { const x = VWV + 60 - ((camX * 1.7 + i * 157) % (VWV + 200)), y = top + 30 + ((i * 71.3) % (G - top - 70)); cx.fillRect(x, y, 50 + (i % 3) * 35, 1.5); }
+    cx.beginPath();
+    for (let i = 0; i < 9; i++) { const x = VWV + 60 - ((camX * 1.7 + i * 157) % (VWV + 200)), y = top + 30 + ((i * 71.3) % (G - top - 70)); cx.rect(x, y, 50 + (i % 3) * 35, 1.5); }
+    cx.fill();
   }
   // grille de vitesse
-  cx.strokeStyle = rgba(Wd.ed, .07); cx.lineWidth = 1;
-  for (let x = -((camX * .6) % 80); x < VWV; x += 80) { cx.beginPath(); cx.moveTo(x, top); cx.lineTo(x, G); cx.stroke(); }
+  cx.strokeStyle = rgba(Wd.ed, .07); cx.lineWidth = 1; cx.beginPath();
+  for (let x = -((camX * .6) % 80); x < VWV; x += 80) { cx.moveTo(x, top); cx.lineTo(x, G); }
+  cx.stroke();
 
   cx.save(); cx.translate(-camX, 0);
   const x0 = camX - 60, x1 = camX + VWV + 60;
@@ -98,8 +116,9 @@ function drawWorld(L, camX, t, tm, opts = {}) {
     cx.fillStyle = Wd.gr; cx.fillRect(a, G, b - a, bot - G);
     if (PULSE > .02) { cx.fillStyle = rgba(Wd.ed, .2 * PULSE); cx.fillRect(a, G + 3, b - a, 14 * PULSE); }
     cx.fillStyle = Wd.ed; cx.fillRect(a, G, b - a, 3);
-    cx.fillStyle = rgba(Wd.ed, .12);
-    for (let gx = Math.ceil(a / 64) * 64; gx < b; gx += 64) cx.fillRect(gx, G + 3, 1, bot - G);
+    cx.fillStyle = rgba(Wd.ed, .12); cx.beginPath();
+    for (let gx = Math.ceil(a / 64) * 64; gx < b; gx += 64) cx.rect(gx, G + 3, 1, bot - G);
+    cx.fill();
   };
   for (const gp of L.gaps) {
     if (gp.x + gp.w < x0) continue; if (gp.x > x1) break;
@@ -146,19 +165,21 @@ function drawObs(o, t, Wd, top, tm, P) {
   switch (o.t) {
     case 'spk': {
       const n = Math.max(1, Math.round(o.w / 22)), sw = o.w / n;
-      for (let i = 0; i < n; i++) {
-        const bx = o.x + i * sw;
-        cx.fillStyle = Wd.ob; cx.beginPath(); cx.moveTo(bx, G); cx.lineTo(bx + sw / 2, G - SPK_H); cx.lineTo(bx + sw, G); cx.fill();
-        cx.fillStyle = 'rgba(255,255,255,.28)'; cx.beginPath(); cx.moveTo(bx + sw / 2, G - SPK_H); cx.lineTo(bx + sw * .62, G); cx.lineTo(bx + sw / 2, G); cx.fill();
-      }
+      cx.fillStyle = Wd.ob; cx.beginPath();
+      for (let i = 0; i < n; i++) { const bx = o.x + i * sw; cx.moveTo(bx, G); cx.lineTo(bx + sw / 2, G - SPK_H); cx.lineTo(bx + sw, G); }
+      cx.fill();
+      cx.fillStyle = 'rgba(255,255,255,.28)'; cx.beginPath();
+      for (let i = 0; i < n; i++) { const bx = o.x + i * sw; cx.moveTo(bx + sw / 2, G - SPK_H); cx.lineTo(bx + sw * .62, G); cx.lineTo(bx + sw / 2, G); }
+      cx.fill();
       break;
     }
     case 'saw': case 'msaw': {
       const y = o.t === 'msaw' ? msawY(o, t) : o.y;
       if (o.t === 'msaw') { cx.strokeStyle = 'rgba(255,255,255,.12)'; cx.lineWidth = 4; cx.beginPath(); cx.moveTo(o.x, o.y); cx.lineTo(o.x, o.y - o.amp); cx.stroke(); }
       cx.save(); cx.translate(o.x, y); cx.rotate(t * (o.sp || .08) * 3);
-      cx.fillStyle = '#b8b8c4';
-      for (let i = 0; i < 12; i++) { const a = i * TAU / 12; cx.beginPath(); cx.moveTo(Math.cos(a) * o.r * .66, Math.sin(a) * o.r * .66); cx.lineTo(Math.cos(a + .26) * o.r, Math.sin(a + .26) * o.r); cx.lineTo(Math.cos(a + .52) * o.r * .66, Math.sin(a + .52) * o.r * .66); cx.fill(); }
+      cx.fillStyle = '#b8b8c4'; cx.beginPath();
+      for (let i = 0; i < 12; i++) { const a = i * TAU / 12; cx.moveTo(Math.cos(a) * o.r * .66, Math.sin(a) * o.r * .66); cx.lineTo(Math.cos(a + .26) * o.r, Math.sin(a + .26) * o.r); cx.lineTo(Math.cos(a + .52) * o.r * .66, Math.sin(a + .52) * o.r * .66); }
+      cx.fill();
       cx.fillStyle = '#d8d8e0'; cx.beginPath(); cx.arc(0, 0, o.r * .58, 0, TAU); cx.fill();
       cx.fillStyle = Wd.ob; cx.beginPath(); cx.arc(0, 0, o.r * .2, 0, TAU); cx.fill();
       cx.restore();
@@ -173,7 +194,7 @@ function drawObs(o, t, Wd, top, tm, P) {
       cx.fillStyle = 'rgba(0,0,0,.35)'; cx.fillRect(o.x + 6, top, 3, o.gs - top); if (bandB < G) cx.fillRect(o.x + 6, bandB, 3, G - bandB);
       cx.strokeStyle = '#39ff9a'; cx.lineWidth = 2; cx.setLineDash([6, 5]);
       cx.strokeRect(o.x - 4, o.gs, WALL_W + 8, o.gh); cx.setLineDash([]);
-      const gg = cx.createLinearGradient(o.x - 120, 0, o.x, 0); gg.addColorStop(0, 'rgba(57,255,154,0)'); gg.addColorStop(1, 'rgba(57,255,154,.14)'); cx.fillStyle = gg; cx.fillRect(o.x - 120, o.gs, 120, o.gh);
+      cx.fillStyle = 'rgba(57,255,154,.05)'; cx.fillRect(o.x - 110, o.gs, 110, o.gh); cx.fillStyle = 'rgba(57,255,154,.08)'; cx.fillRect(o.x - 50, o.gs, 50, o.gh);
       break;
     }
     case 'ceil': {
@@ -186,9 +207,9 @@ function drawObs(o, t, Wd, top, tm, P) {
     case 'plt': case 'mpl': {
       const y = o.t === 'mpl' ? mplY(o, t) : o.y;
       if (o.t === 'mpl') { cx.strokeStyle = 'rgba(255,255,255,.1)'; cx.lineWidth = 2; cx.beginPath(); cx.moveTo(o.x + o.w / 2, o.mi); cx.lineTo(o.x + o.w / 2, o.ma + o.h); cx.stroke(); }
-      const g = cx.createLinearGradient(0, y, 0, y + o.h); g.addColorStop(0, '#f2fff9'); g.addColorStop(.35, '#9fe9d0'); g.addColorStop(1, '#2f8f7a');
-      cx.fillStyle = g; cx.beginPath(); cx.roundRect ? cx.roundRect(o.x, y, o.w, o.h, 5) : cx.rect(o.x, y, o.w, o.h); cx.fill();
-      cx.fillStyle = '#ffffff'; cx.fillRect(o.x + 4, y, o.w - 8, 2);
+      cx.fillStyle = '#2f8f7a'; cx.fillRect(o.x, y + 3, o.w, o.h - 3);
+      cx.fillStyle = '#9fe9d0'; cx.fillRect(o.x, y, o.w, o.h - 5);
+      cx.fillStyle = '#ffffff'; cx.fillRect(o.x, y, o.w, 2.5);
       break;
     }
     case 'pad': {
@@ -329,10 +350,7 @@ function drawMenuBg(tm) {
   const w = Math.floor(tm / 12) % 10, Wd = WORLDS[w];
   drawBg(w, 0, tm); worldTf();
   const camX = tm * 120;
-  for (const [layer, f, a] of [[0, .12, .07], [1, .35, .13]]) {
-    const p = silPath(w, layer), off = -((camX * f) % 1600);
-    cx.fillStyle = rgba(Wd.ed, a); cx.save(); cx.translate(off, 0); cx.fill(p); cx.translate(1600, 0); cx.fill(p); cx.restore();
-  }
+  drawSil(w, camX);
   cx.fillStyle = Wd.gr; cx.fillRect(-OX / SC, G, VWV + 2 * OX / SC, (H - OY) / SC - G + 10);
   cx.fillStyle = Wd.ed; cx.fillRect(-OX / SC, G, VWV + 2 * OX / SC, 3);
   const bx = PXV + 40, by = G - PR - Math.abs(Math.sin(tm * 3)) * 70;
@@ -365,12 +383,39 @@ function renderReplay(tm) {
 
 // ── BOUCLE ───────────────────────────────────────────────────────
 const DT = 1 / 60;
+// Les horloges des navigateurs (Safari surtout) sont arrondies : sans lissage, la durée mesurée de chaque image
+// varie de ±1 ms et le défilement tremble. On cale donc la durée sur la cadence réelle de l'écran.
+const FT = { buf: [], period: 1 / 60, drift: 0, k: 0 };
+function smoothDt(el) {
+  const b = FT.buf; b.push(el); if (b.length > 40) b.shift();
+  if (++FT.k % 10 === 0 && b.length >= 20) {
+    let p = b.slice().sort((x, y) => x - y)[b.length >> 1];
+    for (const c of [1 / 120, 1 / 90, 1 / 60, 1 / 30]) if (Math.abs(p - c) < .0015) p = c;
+    FT.period = p;
+  }
+  const n = Math.round(el / FT.period);
+  if (n < 1 || n > 4 || Math.abs(el - n * FT.period) > .004) return el;
+  const sn = n * FT.period; FT.drift += el - sn;
+  const c = FT.drift * .05; FT.drift -= c; // rattrape en douceur l'écart avec le temps réel
+  return sn + c;
+}
+// Si l'appareil ne tient pas la cadence, on réduit la résolution de rendu par paliers (jamais en mode 30 images/s imposé)
+const PF = { n: 0, sum: 0, at30: 0 };
+function perfWatch(raw) {
+  PF.n++; PF.sum += raw; if (Math.abs(raw - 1 / 30) < .003) PF.at30++;
+  if (PF.n < 150) return;
+  const avg = PF.sum / PF.n, capped30 = PF.at30 > PF.n * .8;
+  PF.n = 0; PF.sum = 0; PF.at30 = 0;
+  if (avg > .0205 && !capped30 && DPRCAP > 1.25 && (window.devicePixelRatio || 1) > 1.25) { DPRCAP = DPRCAP > 1.5 ? 1.5 : 1.25; resize(); }
+}
 function frame(now) {
   requestAnimationFrame(frame);
   const tm = now / 1000;
   if (!Game.last) Game.last = now;
   let el = (now - Game.last) / 1000; Game.last = now;
   if (el > .25) el = .25;
+  if (Game.state === 'play' && el < .2) perfWatch(el);
+  el = smoothDt(el);
   if (Game.state === 'play') {
     D().st.playSec += el;
     Game.acc += el;
@@ -392,8 +437,9 @@ function frame(now) {
   }
   // effets visuels (indépendants de la physique), figés pendant l'arrêt sur image
   if (Game.hit <= 0) {
-    for (const p of Game.parts) { p.x += p.vx * el * 60; p.y += p.vy * el * 60; p.vy += (p.g === undefined ? .35 : p.g) * el * 60; p.a -= (p.f || 1.6) * el; }
-    Game.parts = Game.parts.filter(p => p.a > 0);
+    const ps = Game.parts; let w = 0;
+    for (let i = 0; i < ps.length; i++) { const p = ps[i]; p.x += p.vx * el * 60; p.y += p.vy * el * 60; p.vy += (p.g === undefined ? .35 : p.g) * el * 60; p.a -= (p.f || 1.6) * el; if (p.a > 0) ps[w++] = p; }
+    ps.length = w;
     for (const q of Game.pops) { q.y -= 34 * el; q.a -= 1.1 * el; }
     Game.pops = Game.pops.filter(q => q.a > 0);
   }
@@ -464,6 +510,11 @@ function burst(x, y, n, col, s = 6) {
 // ── HUD ──────────────────────────────────────────────────────────
 let hudCache = {};
 function setTxt(id, v) { if (hudCache[id] !== v) { hudCache[id] = v; $(id).textContent = v; } }
+function setBar(v, mark) {
+  const q = Math.round(v * 300) / 300, mq = Math.round(mark * 300) / 300;
+  if (hudCache.bar !== q) { hudCache.bar = q; $('progF').style.transform = `scaleX(${q})`; }
+  if (hudCache.mark !== mq) { hudCache.mark = mq; $('progB').style.left = (mq * 100) + '%'; }
+}
 function hud() {
   const L = Game.L, P = Game.P;
   if (L.mode === 'story') {
@@ -471,14 +522,14 @@ function hud() {
     setTxt('hName', L.boss ? L.name : `NIVEAU ${L.name}`);
     setTxt('hSub', (Game.practice ? 'ENTRAÎNEMENT' : `ESSAI ${Game.attempt}`) + (lvCoins(L.i).length ? ` · ⚡ ${bits(Game.coins)}/3` : ''));
     setTxt('hPct', Math.floor(pct * 100) + ' %');
-    $('progF').style.width = (pct * 100) + '%'; $('progB').style.left = (best * 100) + '%';
+    setBar(pct, best);
     setTxt('hDeaths', String(Game.deaths));
   } else {
     const m = Math.floor(P.x / METER), best = L.mode === 'daily' ? ((D().st.daily[Game.day] || {}).best || 0) : D().st.endBest;
     setTxt('hName', m + ' m');
     setTxt('hSub', 'RECORD ' + best + ' m');
     setTxt('hPct', 'x' + (L.spAt(P.x) / 6.5).toFixed(2));
-    $('progF').style.width = (best ? Math.min(100, m / best * 100) : 0) + '%'; $('progB').style.left = '100%';
+    setBar(best ? Math.min(1, m / best) : 0, 1);
     setTxt('hDeaths', String(L.mode === 'daily' ? ((D().st.daily[Game.day] || {}).tries || 0) : D().st.endRuns));
   }
 }
@@ -534,7 +585,7 @@ function begin(fromCp) {
 }
 function startMusic() {
   const L = Game.L;
-  Snd.start(L.mode === 'story' ? hashStr('M' + L.i) : Game.seed, L.bpm, L.mode === 'story' ? L.w : 6, L.boss, Game.t / 60);
+  Snd.start(L.mode === 'story' ? hashStr('M' + L.i) : hashStr('ENDLESS'), L.bpm, L.mode === 'story' ? L.w : 6, L.boss, Game.t / 60);
 }
 function restart(byKey) {
   if (!Game.L) return;
@@ -569,6 +620,7 @@ function die(type) {
     }
     Game.dieT = newBest ? .8 : .44;
     if (Game.deaths === 15 && !Game.practice) toastMsg('Bloqué ? Mode entraînement dans le menu pause');
+    Save.save();
   } else {
     Game.dieT = .7;
     endRun();
@@ -604,6 +656,7 @@ function win() {
     Game.next = L.i < 99 ? () => startStory(L.i + 1) : () => { quitToMenu(); openScr('story'); banner('FÉLICITATIONS', 'LES 100 NIVEAUX SONT TERMINÉS', 3000); };
   }
   banner(levelLabel(L) + ' ✓', line2, 1500);
+  if (!Game.practice && L.i < 99) { const np = storyParams(L.i + 1); Snd.prepare(hashStr('M' + np.i), np.bpm, np.w, np.boss); }
   Save.save();
   checkAch();
 }
@@ -724,6 +777,7 @@ function nextLevel() { for (let i = 0; i < 100; i++) if (!(D().lv[i] && D().lv[i
 function buildHome() {
   const d = D();
   const ni = nextLevel(), np = ni >= 0 ? storyParams(ni) : null, nl = ni >= 0 ? d.lv[ni] : null;
+  if (np) Snd.prepare(hashStr('M' + np.i), np.bpm, np.w, np.boss); // boucle musicale du prochain niveau prête avant de jouer
   $('bCont').firstChild.textContent = ni === 0 && !nl ? 'JOUER' : ni < 0 ? 'HISTOIRE TERMINÉE' : 'CONTINUER';
   $('mCont').textContent = ni < 0 ? 'rejouer pour les étoiles et les éclairs' : (np.boss ? `BOSS · ${np.name}` : `NIVEAU ${np.name}`) + (nl && nl.pct ? ` · record ${Math.floor(nl.pct * 100)} %` : '');
   $('hello').textContent = `SALUT ${d.name}`;
@@ -824,7 +878,7 @@ function refreshToggles() {
   document.querySelectorAll('.tog,.tog2').forEach(b => { const k = b.dataset.s; b.classList.toggle('on', !!s[k]); b.textContent = (b.classList.contains('tog2') ? (k === 'music' ? 'MUSIQUE ' : 'SONS ') : '') + (s[k] ? 'ON' : 'OFF'); });
 }
 function buildSet() { $('setName').value = D().name; $('setVol').value = D().set.vol; refreshToggles(); }
-function applySettings() { const s = D().set; Snd.S.music = s.music; Snd.S.sfx = s.sfx; Snd.setVol(s.vol); }
+function applySettings() { const s = D().set; Snd.S.music = s.music; Snd.S.sfx = s.sfx; Snd.setVol(s.vol); if (!s.music) Snd.stop(); }
 
 // ── PARTAGE ──────────────────────────────────────────────────────
 async function share(text) {
@@ -855,7 +909,7 @@ addEventListener('keydown', e => {
   else if ((e.code === 'Escape' || e.code === 'KeyP') && !e.repeat) { if (['play', 'count', 'dying'].includes(Game.state)) pause(); else if (Game.state === 'pause') resume(); }
 });
 addEventListener('keyup', e => { if (JUMP_KEYS.includes(e.code)) { Inp.key = false; updDown(); } });
-document.addEventListener('visibilitychange', () => { if (document.hidden) { pause(); Snd.stop(); } });
+document.addEventListener('visibilitychange', () => { if (document.hidden) { pause(); Snd.stop(); Save.save(); } });
 addEventListener('resize', resize);
 
 // boutons
@@ -897,4 +951,4 @@ resize();
 if (D().name) openScr('home'); else { showScr('s-name'); }
 checkAch();
 requestAnimationFrame(frame);
-setInterval(() => { if (Game.state === 'play') Save.save(); }, 15000);
+addEventListener('pagehide', () => Save.save());

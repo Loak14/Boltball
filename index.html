@@ -92,7 +92,7 @@ input[type=range]{accent-color:var(--red);width:150px}
 #hSub{font:700 .62rem Arial,sans-serif;color:var(--mut)}
 .hc{display:flex;align-items:center;gap:8px}
 #prog{width:min(36vw,280px);height:8px;background:rgba(255,255,255,.12);border-radius:8px;position:relative;overflow:visible}
-#progF{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--red),var(--red2));border-radius:8px}
+#progF{display:block;height:100%;width:100%;transform-origin:0 50%;transform:scaleX(0);will-change:transform;background:linear-gradient(90deg,var(--red),var(--red2));border-radius:8px}
 #progB{position:absolute;top:-4px;width:2px;height:16px;background:var(--gold);left:0;box-shadow:0 0 6px var(--gold)}
 #hPct{font:900 .72rem Arial,sans-serif;min-width:40px}
 .hr{display:flex;justify-content:flex-end;align-items:center;gap:10px}
@@ -662,22 +662,32 @@ const SEEDFIX = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 const COINS = [[1104,204,2362,245,3125,164],[1402,207,2561,129,3321,143],[995,204,3249,162,4301,231],[1006,208,2000,190,4711,183],[1302,160,1984,182,3779,254],[1105,260,3315,155,4464,190],[1640,188,3024,190,4606,211],[1237,200,2711,206,3724,197],[934,139,3233,252,4939,185],[3456,154,8024,169,13810,144],[971,184,2347,220,4434,206],[1631,245,2836,141,4054,281],[1349,238,2849,177,4645,243],[1355,201,2565,159,4587,196],[1481,179,3254,191,4097,185],[1041,81,3168,196,4989,217],[831,205,3578,213,5594,212],[1884,141,2786,207,4772,213],[2292,134,3982,206,5340,161],[3753,188,10501,189,16549,110],[2093,125,2681,192,5376,140],[1353,266,3250,261,4940,192],[1090,204,3574,243,4513,226],[1033,126,3375,222,5412,208],[2492,199,3181,182,6292,151],[1531,213,4334,175,4984,189],[1236,245,3742,193,5735,229],[895,157,3405,238,5111,288],[2138,219,4411,159,6606,135],[4716,142,9110,133,19197,148],[1561,235,4396,111,5270,198],[1409,157,4199,248,6025,180],[1711,177,3531,181,6599,211],[1066,183,4060,201,6141,130],[2745,181,3247,211,5285,135],[1118,208,3523,190,6455,253],[2775,204,3347,168,6114,297],[2602,215,4105,76,6596,149],[2649,198,5210,189,5602,213],[2584,132,8864,159,16019,180],[1489,170,3299,217,6597,189],[3049,211,4311,105,7480,120],[1666,142,3491,219,6997,230],[1060,183,4360,185,7055,160],[1771,139,5708,51,7060,113],[1793,181,3868,244,6753,223],[1831,153,4956,188,8625,199],[2576,133,4676,151,7736,204],[888,204,4184,209,8832,204],[8231,142,12478,99,20994,135],[3042,201,5897,163,6880,172],[2983,159,4761,93,8096,181],[1761,210,4732,173,7734,201],[923,183,4158,195,8513,192],[3540,192,4047,103,8712,145],[1948,232,5549,223,6702,192],[1891,189,3998,165,7086,246],[1746,213,6416,217,6873,133],[1391,162,6802,220,7815,199],[2727,118,15503,173,23851,157],[1721,141,5838,219,8688,181],[1540,123,5844,226,8419,187],[3583,217,6814,151,7452,132],[2767,196,4048,188,7939,315],[1145,201,5537,205,9196,149],[3862,124,6599,191,7468,187],[3876,133,5744,170,9155,153],[2024,91,7289,156,10629,122],[1672,256,6429,250,9882,134],[6672,115,19376,104,21099,183],[3173,129,4439,198,7706,131],[2753,92,7115,125,7759,223],[1709,177,7412,191,8169,158],[3924,180,5621,187,10995,247],[2474,132,7738,129,11034,146],[1770,147,6649,219,8753,243],[2362,20,7448,133,9327,105],[3477,240,7958,196,10977,127],[3472,81,5208,176,11727,191],[3762,113,13838,160,25999,77],[2847,188,5282,119,9978,199],[2936,140,5107,204,8315,219],[2496,160,7056,159,11395,190],[3628,146,5115,204,9744,194],[3037,197,8329,216,10949,124],[1969,234,8162,189,9480,206],[4765,143,5319,184,9798,216],[2189,132,6988,151,10091,206],[4977,181,8577,185,9405,162],[8440,101,16521,136,22857,201],[2897,190,7119,139,9071,216],[2624,156,5266,94,11415,140],[1536,136,7285,61,11178,183],[2824,181,5887,120,12453,195],[1766,16,7314,124,10424,215],[5049,167,8335,165,12710,204],[4158,156,8362,226,9834,143],[2926,189,6401,170,11668,170],[1687,195,6729,231,14343,180],[2925,124,14352,122,31068,117]];
 
 // ════════════════════════════════════════════════════════════════
-//  AUDIO : séquenceur musical par monde + effets sonores
+//  AUDIO : musique par niveau + effets sonores
+//  La boucle musicale (16 mesures) est calculée une fois hors ligne puis jouée
+//  comme un seul son en boucle : aucun travail audio pendant le jeu.
 // ════════════════════════════════════════════════════════════════
 const Snd = (() => {
   let ac = null, master, mus, sfx, noise, timer = 0;
-  let seq = null; // { bpm, startT, step, nextT, pat }
+  let A = null, NZ = null;       // contexte et bruit utilisés par les instruments (temps réel ou hors ligne)
+  let seq = null;                // séquenceur temps réel (secours si le rendu hors ligne est indisponible)
+  let src = null, tok = 0, noOffline = false;
+  const cache = new Map();       // clé -> { pr, buf }
+  const BARS = 16, MUS_VOL = .55;
   const S = { music: true, sfx: true, vol: .8 };
 
+  function mkNoise(c) {
+    const b = c.createBuffer(1, c.sampleRate, c.sampleRate), d = b.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    return b;
+  }
   function ctx() {
     if (!ac) {
       const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null;
       ac = new AC();
       master = ac.createGain(); master.gain.value = S.vol; master.connect(ac.destination);
-      mus = ac.createGain(); mus.gain.value = .55; mus.connect(master);
+      mus = ac.createGain(); mus.gain.value = MUS_VOL; mus.connect(master);
       sfx = ac.createGain(); sfx.gain.value = .9; sfx.connect(master);
-      noise = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
-      const d = noise.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      noise = mkNoise(ac); A = ac; NZ = noise;
     }
     if (ac.state === 'suspended') ac.resume();
     return ac;
@@ -686,7 +696,7 @@ const Snd = (() => {
 
   // ── instruments ──
   function osc(dest, type, f1, f2, t, dur, vol, att = .004) {
-    const o = ac.createOscillator(), g = ac.createGain();
+    const o = A.createOscillator(), g = A.createGain();
     o.type = type; o.frequency.setValueAtTime(f1, t);
     if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + dur);
     g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + att);
@@ -694,19 +704,19 @@ const Snd = (() => {
     o.connect(g); g.connect(dest); o.start(t); o.stop(t + dur + .02);
   }
   function nz(dest, t, dur, vol, hp, lp) {
-    const s = ac.createBufferSource(); s.buffer = noise;
-    const g = ac.createGain(); let n = s;
-    if (hp) { const f = ac.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = hp; n.connect(f); n = f; }
-    if (lp) { const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = lp; n.connect(f); n = f; }
+    const s = A.createBufferSource(); s.buffer = NZ;
+    const g = A.createGain(); let n = s;
+    if (hp) { const f = A.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = hp; n.connect(f); n = f; }
+    if (lp) { const f = A.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = lp; n.connect(f); n = f; }
     g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     n.connect(g); g.connect(dest); s.start(t, Math.random() * .5); s.stop(t + dur + .02);
   }
-  function bass(t, m, dur, vol) {
-    const o = ac.createOscillator(), f = ac.createBiquadFilter(), g = ac.createGain();
+  function bass(dest, t, m, dur, vol) {
+    const o = A.createOscillator(), f = A.createBiquadFilter(), g = A.createGain();
     o.type = 'sawtooth'; o.frequency.value = hz(m);
     f.type = 'lowpass'; f.frequency.setValueAtTime(900, t); f.frequency.exponentialRampToValueAtTime(160, t + dur); f.Q.value = 6;
     g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    o.connect(f); f.connect(g); g.connect(mus); o.start(t); o.stop(t + dur + .02);
+    o.connect(f); f.connect(g); g.connect(dest); o.start(t); o.stop(t + dur + .02);
   }
 
   // ── motif musical déterministe par niveau ──
@@ -729,50 +739,113 @@ const Snd = (() => {
   }
   function noteOf(p, deg, oct) { const n = p.scale.length; const o = Math.floor(deg / n); return p.root + oct * 12 + o * 12 + p.scale[((deg % n) + n) % n]; }
 
-  function playStep(i, t) {
-    const p = seq.pat, s = i % 16, bar = Math.floor(i / 16), sd = 60 / seq.bpm / 4;
+  function playStep(p, bpm, i, t, dest) {
+    const s = i % 16, bar = Math.floor(i / 16), sd = 60 / bpm / 4;
     const deg = p.prog[bar % p.prog.length];
-    if (p.kickX[s]) osc(mus, 'sine', 150, 42, t, .32, .9);
-    if (s === 4 || s === 12) nz(mus, t, .16, .35, 1200, 6000);
-    if (s % 2 === 1) nz(mus, t, .05, .13, 7000);
-    if (p.boss && s % 2 === 0) nz(mus, t, .03, .06, 9000);
-    if (p.bassRh[s]) bass(t, noteOf(p, deg, -2), sd * 1.7, .32);
+    if (p.kickX[s]) osc(dest, 'sine', 150, 42, t, .32, .9);
+    if (s === 4 || s === 12) nz(dest, t, .16, .35, 1200, 6000);
+    if (s % 2 === 1) nz(dest, t, .05, .13, 7000);
+    if (p.boss && s % 2 === 0) nz(dest, t, .03, .06, 9000);
+    if (p.bassRh[s]) bass(dest, t, noteOf(p, deg, -2), sd * 1.7, .32);
     // l'arpège joue dès la première mesure : on meurt souvent, l'intro doit déjà sonner plein
-    osc(mus, p.lead, hz(noteOf(p, deg + p.arpShape[s % 8], 0)), 0, t, sd * .9, bar >= 1 ? .05 : .04, .002);
-    if (s % 8 === 0) osc(mus, 'triangle', hz(noteOf(p, deg + 4, 1)), 0, t, sd * 6, .03, .02);
+    osc(dest, p.lead, hz(noteOf(p, deg + p.arpShape[s % 8], 0)), 0, t, sd * .9, bar >= 1 ? .05 : .04, .002);
+    if (s % 8 === 0) osc(dest, 'triangle', hz(noteOf(p, deg + 4, 1)), 0, t, sd * 6, .03, .02);
     // la mélodie entre après 2 mesures et monte d'une octave toutes les 8
-    if (bar >= 2) { const m = p.mel[i % 32]; if (m !== null) osc(mus, 'sawtooth', hz(noteOf(p, deg + m, bar % 16 >= 8 ? 2 : 1)), 0, t, sd * 1.8, .028, .01); }
+    if (bar >= 2) { const m = p.mel[i % 32]; if (m !== null) osc(dest, 'sawtooth', hz(noteOf(p, deg + m, bar % 16 >= 8 ? 2 : 1)), 0, t, sd * 1.8, .028, .01); }
     // roulement de caisse claire à la fin de chaque phrase de 4 mesures
-    if (bar % 4 === 3 && s >= 12) nz(mus, t, .08, .16 + (s - 12) * .05, 1500, 7000);
+    if (bar % 4 === 3 && s >= 12) nz(dest, t, .08, .16 + (s - 12) * .05, 1500, 7000);
   }
+
+  // ── rendu hors ligne de la boucle (par petits lots pour ne pas bloquer l'affichage) ──
+  function render(seed, bpm, world, boss) {
+    const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    if (!OAC || noOffline) return null;
+    return new Promise((res, rej) => {
+      let off, nb;
+      const sr = ac.sampleRate, sd = 60 / bpm / 4, n = BARS * 16;
+      try { off = new OAC(1, Math.ceil(n * sd * sr), sr); nb = mkNoise(off); } catch (e) { return rej(e); }
+      const pat = makePattern(seed, world, boss);
+      let i = 0;
+      const chunk = () => {
+        try {
+          A = off; NZ = nb;
+          const end = Math.min(n, i + 24);
+          for (; i < end; i++) playStep(pat, bpm, i, i * sd, off.destination);
+        } catch (e) { A = ac; NZ = noise; return rej(e); }
+        A = ac; NZ = noise;
+        if (i < n) return setTimeout(chunk, 0);
+        try {
+          off.oncomplete = e => res(e.renderedBuffer);
+          const pr = off.startRendering(); if (pr && pr.then) pr.then(res, rej);
+        } catch (e) { rej(e); }
+      };
+      chunk();
+    });
+  }
+  function entry(seed, bpm, world, boss) {
+    const key = [seed, bpm, world, boss ? 1 : 0].join('|');
+    let e = cache.get(key);
+    if (e) return e;
+    const pr = render(seed, bpm, world, boss);
+    if (!pr) return null;
+    e = { pr, buf: null, key };
+    cache.set(key, e);
+    pr.then(buf => { e.buf = buf; for (const k of cache.keys()) { if (cache.size <= 3) break; if (k !== key) cache.delete(k); } },
+      () => { cache.delete(key); noOffline = true; });
+    return e;
+  }
+
+  // ── séquenceur temps réel (secours) ──
   function tick() {
     if (!seq || !ac) return;
     const sd = 60 / seq.bpm / 4;
     while (seq.nextT < ac.currentTime + .14) {
-      if (seq.nextT >= ac.currentTime - .02) playStep(seq.step, seq.nextT);
+      if (seq.nextT >= ac.currentTime - .02) playStep(seq.pat, seq.bpm, seq.step, seq.nextT, mus);
       seq.step++; seq.nextT += sd;
     }
+  }
+  function live(seed, bpm, world, boss, offsetSec) {
+    const sd = 60 / bpm / 4, startT = ac.currentTime + .03 - offsetSec;
+    const step = Math.max(0, Math.ceil(offsetSec / sd - 1e-6));
+    seq = { bpm, startT, step, nextT: startT + step * sd, pat: makePattern(seed, world, boss) };
+    mus.gain.cancelScheduledValues(ac.currentTime); mus.gain.setValueAtTime(MUS_VOL, ac.currentTime);
+    tick(); timer = setInterval(tick, 25);
   }
 
   return {
     S,
     unlock() { ctx(); },
     setVol(v) { S.vol = v; if (master) master.gain.value = v; },
+    // Prépare la boucle d'un niveau à l'avance (pendant l'écran de fin du précédent)
+    prepare(seed, bpm, world, boss) { if (S.music && ac) entry(seed, bpm, world, boss); },
     start(seed, bpm, world, boss, offsetSec = 0) {
-      this.stop();
+      this.stop(true);
       if (!S.music || !ctx()) return;
-      const sd = 60 / bpm / 4, startT = ac.currentTime + .03 - offsetSec;
-      const step = Math.max(0, Math.ceil(offsetSec / sd - 1e-6));
-      seq = { bpm, startT, step, nextT: startT + step * sd, pat: makePattern(seed, world, boss) };
-      mus.gain.cancelScheduledValues(ac.currentTime); mus.gain.setValueAtTime(.55, ac.currentTime);
-      tick(); timer = setInterval(tick, 25);
+      const my = ++tok, asked = ac.currentTime;
+      const play = buf => {
+        if (my !== tok || !S.music) return;
+        const s = ac.createBufferSource(); s.buffer = buf; s.loop = true; s.connect(mus);
+        mus.gain.cancelScheduledValues(ac.currentTime); mus.gain.setValueAtTime(MUS_VOL, ac.currentTime);
+        s.start(0, (offsetSec + ac.currentTime - asked) % buf.duration); src = s;
+      };
+      const e = entry(seed, bpm, world, boss);
+      if (!e) return live(seed, bpm, world, boss, offsetSec);
+      if (e.buf) return play(e.buf);
+      e.pr.then(play, () => { if (my === tok) live(seed, bpm, world, boss, offsetSec + ac.currentTime - asked); });
     },
-    stop() {
+    stop(now) {
+      tok++;
       clearInterval(timer); timer = 0;
-      if (seq && ac) { mus.gain.cancelScheduledValues(ac.currentTime); mus.gain.setValueAtTime(mus.gain.value, ac.currentTime); mus.gain.linearRampToValueAtTime(0, ac.currentTime + .05); }
+      if (!ac) { seq = null; return; }
+      if (src) {
+        const s = src; src = null;
+        try { if (now) s.stop(); else { mus.gain.cancelScheduledValues(ac.currentTime); mus.gain.setValueAtTime(mus.gain.value, ac.currentTime); mus.gain.linearRampToValueAtTime(0, ac.currentTime + .05); s.stop(ac.currentTime + .07); } } catch (e) { }
+      }
+      if (seq) { mus.gain.cancelScheduledValues(ac.currentTime); mus.gain.setValueAtTime(mus.gain.value, ac.currentTime); mus.gain.linearRampToValueAtTime(0, ac.currentTime + .05); }
       seq = null;
     },
-    playing() { return !!seq; },
+    playing() { return !!seq || !!src; },
+    mode() { return src ? 'boucle' : seq ? 'direct' : ''; },
     // ── effets ──
     sfx(name) {
       if (!S.sfx || !ctx()) return;
@@ -1324,13 +1397,15 @@ const LB = {
 //  JEU : boucle, rendu, interface
 // ════════════════════════════════════════════════════════════════
 const $ = id => document.getElementById(id);
-const cv = $('c'), cx = cv.getContext('2d');
+const cv = $('c'), cx = cv.getContext('2d', { alpha: false });
+let DPRCAP = 2; // baisse automatiquement si l'appareil ne tient pas 60 images/s
 let W = 0, H = 0, DPR = 1, SC = 1, OX = 0, OY = 0, VWV = VW, PXV = PX;
 
 function resize() {
-  DPR = Math.min(2, window.devicePixelRatio || 1);
+  DPR = Math.min(DPRCAP, window.devicePixelRatio || 1);
   W = innerWidth; H = innerHeight;
-  cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+  const cw = Math.round(W * DPR), ch = Math.round(H * DPR);
+  if (cv.width !== cw || cv.height !== ch) { cv.width = cw; cv.height = ch; } // ne réalloue que si la taille change
   view(Game.L ? Game.vsp : 6.2);
 }
 // En portrait, la vue s'élargit avec la vitesse pour garder le même temps de réaction
@@ -1382,11 +1457,27 @@ function silPath(w, layer) {
 // ── RENDU ────────────────────────────────────────────────────────
 function lowerObs(L, x) { let lo = 0, hi = L.obs.length; while (lo < hi) { const m = lo + hi >> 1; if (L.obs[m].x0 < x) lo = m + 1; else hi = m; } return lo; }
 
+// Fond : le dégradé est peint une seule fois dans une image de la taille de l'écran,
+// puis recopié tel quel à chaque image (bien moins coûteux qu'un dégradé plein écran recalculé)
+let BGI = null, BGW = -1;
 function drawBg(w, camX, tm) {
+  if (BGW !== w || !BGI || BGI.width !== cv.width || BGI.height !== cv.height) {
+    if (!BGI) BGI = document.createElement('canvas');
+    BGI.width = cv.width; BGI.height = cv.height;
+    const g = BGI.getContext('2d', { alpha: false }), gr = g.createLinearGradient(0, 0, 0, cv.height);
+    gr.addColorStop(0, WORLDS[w].c1); gr.addColorStop(1, WORLDS[w].c2); g.fillStyle = gr; g.fillRect(0, 0, cv.width, cv.height);
+    BGW = w;
+  }
+  cx.setTransform(1, 0, 0, 1, 0, 0);
+  cx.drawImage(BGI, 0, 0);
+}
+function drawSil(w, camX) {
   const Wd = WORLDS[w];
-  cx.setTransform(DPR, 0, 0, DPR, 0, 0);
-  const g = cx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, Wd.c1); g.addColorStop(1, Wd.c2);
-  cx.fillStyle = g; cx.fillRect(0, 0, W, H);
+  for (const [layer, f, a] of [[0, .12, .07], [1, .35, .13]]) {
+    const p = silPath(w, layer), off = -((camX * f) % 1600);
+    cx.fillStyle = rgba(Wd.ed, a + .05 * PULSE);
+    cx.save(); cx.translate(off, 0); cx.fill(p); if (off + 1600 < VWV + 2) { cx.translate(1600, 0); cx.fill(p); } cx.restore();
+  }
 }
 
 function worldTf(shx = 0, shy = 0) { cx.setTransform(DPR * SC, 0, 0, DPR * SC, DPR * (OX + shx * SC), DPR * (OY + shy * SC)); }
@@ -1394,22 +1485,22 @@ function worldTf(shx = 0, shy = 0) { cx.setTransform(DPR * SC, 0, 0, DPR * SC, D
 function drawWorld(L, camX, t, tm, opts = {}) {
   const Wd = WORLDS[L.w] || WORLDS[0], top = -OY / SC - 20, bot = (H - OY) / SC + 20;
   // étoiles + décors
-  cx.fillStyle = 'rgba(255,255,255,.5)';
-  for (let i = 0; i < 46; i++) { const x = ((i * 173.3 - camX * .04) % VWV + VWV) % VWV, y = top + ((i * 97.7) % (G - top - 60)); cx.fillRect(x, y, i % 5 ? 1.2 : 2, i % 5 ? 1.2 : 2); }
-  for (const [layer, f, a] of [[0, .12, .07], [1, .35, .13]]) {
-    const p = silPath(L.w, layer), off = -((camX * f) % 1600);
-    cx.fillStyle = rgba(Wd.ed, a + .05 * PULSE);
-    cx.save(); cx.translate(off, 0); cx.fill(p); cx.translate(1600, 0); cx.fill(p); cx.restore();
-  }
+  cx.fillStyle = 'rgba(255,255,255,.5)'; cx.beginPath();
+  for (let i = 0; i < 46; i++) { const x = ((i * 173.3 - camX * .04) % VWV + VWV) % VWV, y = top + ((i * 97.7) % (G - top - 60)); cx.rect(x, y, i % 5 ? 1.2 : 2, i % 5 ? 1.2 : 2); }
+  cx.fill();
+  drawSil(L.w, camX);
   // lignes de vitesse
   const spd = opts.sp || 0;
   if (spd > 6.8) {
     cx.fillStyle = `rgba(255,255,255,${Math.min(.15, (spd - 6.8) * .05)})`;
-    for (let i = 0; i < 9; i++) { const x = VWV + 60 - ((camX * 1.7 + i * 157) % (VWV + 200)), y = top + 30 + ((i * 71.3) % (G - top - 70)); cx.fillRect(x, y, 50 + (i % 3) * 35, 1.5); }
+    cx.beginPath();
+    for (let i = 0; i < 9; i++) { const x = VWV + 60 - ((camX * 1.7 + i * 157) % (VWV + 200)), y = top + 30 + ((i * 71.3) % (G - top - 70)); cx.rect(x, y, 50 + (i % 3) * 35, 1.5); }
+    cx.fill();
   }
   // grille de vitesse
-  cx.strokeStyle = rgba(Wd.ed, .07); cx.lineWidth = 1;
-  for (let x = -((camX * .6) % 80); x < VWV; x += 80) { cx.beginPath(); cx.moveTo(x, top); cx.lineTo(x, G); cx.stroke(); }
+  cx.strokeStyle = rgba(Wd.ed, .07); cx.lineWidth = 1; cx.beginPath();
+  for (let x = -((camX * .6) % 80); x < VWV; x += 80) { cx.moveTo(x, top); cx.lineTo(x, G); }
+  cx.stroke();
 
   cx.save(); cx.translate(-camX, 0);
   const x0 = camX - 60, x1 = camX + VWV + 60;
@@ -1420,8 +1511,9 @@ function drawWorld(L, camX, t, tm, opts = {}) {
     cx.fillStyle = Wd.gr; cx.fillRect(a, G, b - a, bot - G);
     if (PULSE > .02) { cx.fillStyle = rgba(Wd.ed, .2 * PULSE); cx.fillRect(a, G + 3, b - a, 14 * PULSE); }
     cx.fillStyle = Wd.ed; cx.fillRect(a, G, b - a, 3);
-    cx.fillStyle = rgba(Wd.ed, .12);
-    for (let gx = Math.ceil(a / 64) * 64; gx < b; gx += 64) cx.fillRect(gx, G + 3, 1, bot - G);
+    cx.fillStyle = rgba(Wd.ed, .12); cx.beginPath();
+    for (let gx = Math.ceil(a / 64) * 64; gx < b; gx += 64) cx.rect(gx, G + 3, 1, bot - G);
+    cx.fill();
   };
   for (const gp of L.gaps) {
     if (gp.x + gp.w < x0) continue; if (gp.x > x1) break;
@@ -1468,19 +1560,21 @@ function drawObs(o, t, Wd, top, tm, P) {
   switch (o.t) {
     case 'spk': {
       const n = Math.max(1, Math.round(o.w / 22)), sw = o.w / n;
-      for (let i = 0; i < n; i++) {
-        const bx = o.x + i * sw;
-        cx.fillStyle = Wd.ob; cx.beginPath(); cx.moveTo(bx, G); cx.lineTo(bx + sw / 2, G - SPK_H); cx.lineTo(bx + sw, G); cx.fill();
-        cx.fillStyle = 'rgba(255,255,255,.28)'; cx.beginPath(); cx.moveTo(bx + sw / 2, G - SPK_H); cx.lineTo(bx + sw * .62, G); cx.lineTo(bx + sw / 2, G); cx.fill();
-      }
+      cx.fillStyle = Wd.ob; cx.beginPath();
+      for (let i = 0; i < n; i++) { const bx = o.x + i * sw; cx.moveTo(bx, G); cx.lineTo(bx + sw / 2, G - SPK_H); cx.lineTo(bx + sw, G); }
+      cx.fill();
+      cx.fillStyle = 'rgba(255,255,255,.28)'; cx.beginPath();
+      for (let i = 0; i < n; i++) { const bx = o.x + i * sw; cx.moveTo(bx + sw / 2, G - SPK_H); cx.lineTo(bx + sw * .62, G); cx.lineTo(bx + sw / 2, G); }
+      cx.fill();
       break;
     }
     case 'saw': case 'msaw': {
       const y = o.t === 'msaw' ? msawY(o, t) : o.y;
       if (o.t === 'msaw') { cx.strokeStyle = 'rgba(255,255,255,.12)'; cx.lineWidth = 4; cx.beginPath(); cx.moveTo(o.x, o.y); cx.lineTo(o.x, o.y - o.amp); cx.stroke(); }
       cx.save(); cx.translate(o.x, y); cx.rotate(t * (o.sp || .08) * 3);
-      cx.fillStyle = '#b8b8c4';
-      for (let i = 0; i < 12; i++) { const a = i * TAU / 12; cx.beginPath(); cx.moveTo(Math.cos(a) * o.r * .66, Math.sin(a) * o.r * .66); cx.lineTo(Math.cos(a + .26) * o.r, Math.sin(a + .26) * o.r); cx.lineTo(Math.cos(a + .52) * o.r * .66, Math.sin(a + .52) * o.r * .66); cx.fill(); }
+      cx.fillStyle = '#b8b8c4'; cx.beginPath();
+      for (let i = 0; i < 12; i++) { const a = i * TAU / 12; cx.moveTo(Math.cos(a) * o.r * .66, Math.sin(a) * o.r * .66); cx.lineTo(Math.cos(a + .26) * o.r, Math.sin(a + .26) * o.r); cx.lineTo(Math.cos(a + .52) * o.r * .66, Math.sin(a + .52) * o.r * .66); }
+      cx.fill();
       cx.fillStyle = '#d8d8e0'; cx.beginPath(); cx.arc(0, 0, o.r * .58, 0, TAU); cx.fill();
       cx.fillStyle = Wd.ob; cx.beginPath(); cx.arc(0, 0, o.r * .2, 0, TAU); cx.fill();
       cx.restore();
@@ -1495,7 +1589,7 @@ function drawObs(o, t, Wd, top, tm, P) {
       cx.fillStyle = 'rgba(0,0,0,.35)'; cx.fillRect(o.x + 6, top, 3, o.gs - top); if (bandB < G) cx.fillRect(o.x + 6, bandB, 3, G - bandB);
       cx.strokeStyle = '#39ff9a'; cx.lineWidth = 2; cx.setLineDash([6, 5]);
       cx.strokeRect(o.x - 4, o.gs, WALL_W + 8, o.gh); cx.setLineDash([]);
-      const gg = cx.createLinearGradient(o.x - 120, 0, o.x, 0); gg.addColorStop(0, 'rgba(57,255,154,0)'); gg.addColorStop(1, 'rgba(57,255,154,.14)'); cx.fillStyle = gg; cx.fillRect(o.x - 120, o.gs, 120, o.gh);
+      cx.fillStyle = 'rgba(57,255,154,.05)'; cx.fillRect(o.x - 110, o.gs, 110, o.gh); cx.fillStyle = 'rgba(57,255,154,.08)'; cx.fillRect(o.x - 50, o.gs, 50, o.gh);
       break;
     }
     case 'ceil': {
@@ -1508,9 +1602,9 @@ function drawObs(o, t, Wd, top, tm, P) {
     case 'plt': case 'mpl': {
       const y = o.t === 'mpl' ? mplY(o, t) : o.y;
       if (o.t === 'mpl') { cx.strokeStyle = 'rgba(255,255,255,.1)'; cx.lineWidth = 2; cx.beginPath(); cx.moveTo(o.x + o.w / 2, o.mi); cx.lineTo(o.x + o.w / 2, o.ma + o.h); cx.stroke(); }
-      const g = cx.createLinearGradient(0, y, 0, y + o.h); g.addColorStop(0, '#f2fff9'); g.addColorStop(.35, '#9fe9d0'); g.addColorStop(1, '#2f8f7a');
-      cx.fillStyle = g; cx.beginPath(); cx.roundRect ? cx.roundRect(o.x, y, o.w, o.h, 5) : cx.rect(o.x, y, o.w, o.h); cx.fill();
-      cx.fillStyle = '#ffffff'; cx.fillRect(o.x + 4, y, o.w - 8, 2);
+      cx.fillStyle = '#2f8f7a'; cx.fillRect(o.x, y + 3, o.w, o.h - 3);
+      cx.fillStyle = '#9fe9d0'; cx.fillRect(o.x, y, o.w, o.h - 5);
+      cx.fillStyle = '#ffffff'; cx.fillRect(o.x, y, o.w, 2.5);
       break;
     }
     case 'pad': {
@@ -1651,10 +1745,7 @@ function drawMenuBg(tm) {
   const w = Math.floor(tm / 12) % 10, Wd = WORLDS[w];
   drawBg(w, 0, tm); worldTf();
   const camX = tm * 120;
-  for (const [layer, f, a] of [[0, .12, .07], [1, .35, .13]]) {
-    const p = silPath(w, layer), off = -((camX * f) % 1600);
-    cx.fillStyle = rgba(Wd.ed, a); cx.save(); cx.translate(off, 0); cx.fill(p); cx.translate(1600, 0); cx.fill(p); cx.restore();
-  }
+  drawSil(w, camX);
   cx.fillStyle = Wd.gr; cx.fillRect(-OX / SC, G, VWV + 2 * OX / SC, (H - OY) / SC - G + 10);
   cx.fillStyle = Wd.ed; cx.fillRect(-OX / SC, G, VWV + 2 * OX / SC, 3);
   const bx = PXV + 40, by = G - PR - Math.abs(Math.sin(tm * 3)) * 70;
@@ -1687,12 +1778,39 @@ function renderReplay(tm) {
 
 // ── BOUCLE ───────────────────────────────────────────────────────
 const DT = 1 / 60;
+// Les horloges des navigateurs (Safari surtout) sont arrondies : sans lissage, la durée mesurée de chaque image
+// varie de ±1 ms et le défilement tremble. On cale donc la durée sur la cadence réelle de l'écran.
+const FT = { buf: [], period: 1 / 60, drift: 0, k: 0 };
+function smoothDt(el) {
+  const b = FT.buf; b.push(el); if (b.length > 40) b.shift();
+  if (++FT.k % 10 === 0 && b.length >= 20) {
+    let p = b.slice().sort((x, y) => x - y)[b.length >> 1];
+    for (const c of [1 / 120, 1 / 90, 1 / 60, 1 / 30]) if (Math.abs(p - c) < .0015) p = c;
+    FT.period = p;
+  }
+  const n = Math.round(el / FT.period);
+  if (n < 1 || n > 4 || Math.abs(el - n * FT.period) > .004) return el;
+  const sn = n * FT.period; FT.drift += el - sn;
+  const c = FT.drift * .05; FT.drift -= c; // rattrape en douceur l'écart avec le temps réel
+  return sn + c;
+}
+// Si l'appareil ne tient pas la cadence, on réduit la résolution de rendu par paliers (jamais en mode 30 images/s imposé)
+const PF = { n: 0, sum: 0, at30: 0 };
+function perfWatch(raw) {
+  PF.n++; PF.sum += raw; if (Math.abs(raw - 1 / 30) < .003) PF.at30++;
+  if (PF.n < 150) return;
+  const avg = PF.sum / PF.n, capped30 = PF.at30 > PF.n * .8;
+  PF.n = 0; PF.sum = 0; PF.at30 = 0;
+  if (avg > .0205 && !capped30 && DPRCAP > 1.25 && (window.devicePixelRatio || 1) > 1.25) { DPRCAP = DPRCAP > 1.5 ? 1.5 : 1.25; resize(); }
+}
 function frame(now) {
   requestAnimationFrame(frame);
   const tm = now / 1000;
   if (!Game.last) Game.last = now;
   let el = (now - Game.last) / 1000; Game.last = now;
   if (el > .25) el = .25;
+  if (Game.state === 'play' && el < .2) perfWatch(el);
+  el = smoothDt(el);
   if (Game.state === 'play') {
     D().st.playSec += el;
     Game.acc += el;
@@ -1714,8 +1832,9 @@ function frame(now) {
   }
   // effets visuels (indépendants de la physique), figés pendant l'arrêt sur image
   if (Game.hit <= 0) {
-    for (const p of Game.parts) { p.x += p.vx * el * 60; p.y += p.vy * el * 60; p.vy += (p.g === undefined ? .35 : p.g) * el * 60; p.a -= (p.f || 1.6) * el; }
-    Game.parts = Game.parts.filter(p => p.a > 0);
+    const ps = Game.parts; let w = 0;
+    for (let i = 0; i < ps.length; i++) { const p = ps[i]; p.x += p.vx * el * 60; p.y += p.vy * el * 60; p.vy += (p.g === undefined ? .35 : p.g) * el * 60; p.a -= (p.f || 1.6) * el; if (p.a > 0) ps[w++] = p; }
+    ps.length = w;
     for (const q of Game.pops) { q.y -= 34 * el; q.a -= 1.1 * el; }
     Game.pops = Game.pops.filter(q => q.a > 0);
   }
@@ -1786,6 +1905,11 @@ function burst(x, y, n, col, s = 6) {
 // ── HUD ──────────────────────────────────────────────────────────
 let hudCache = {};
 function setTxt(id, v) { if (hudCache[id] !== v) { hudCache[id] = v; $(id).textContent = v; } }
+function setBar(v, mark) {
+  const q = Math.round(v * 300) / 300, mq = Math.round(mark * 300) / 300;
+  if (hudCache.bar !== q) { hudCache.bar = q; $('progF').style.transform = `scaleX(${q})`; }
+  if (hudCache.mark !== mq) { hudCache.mark = mq; $('progB').style.left = (mq * 100) + '%'; }
+}
 function hud() {
   const L = Game.L, P = Game.P;
   if (L.mode === 'story') {
@@ -1793,14 +1917,14 @@ function hud() {
     setTxt('hName', L.boss ? L.name : `NIVEAU ${L.name}`);
     setTxt('hSub', (Game.practice ? 'ENTRAÎNEMENT' : `ESSAI ${Game.attempt}`) + (lvCoins(L.i).length ? ` · ⚡ ${bits(Game.coins)}/3` : ''));
     setTxt('hPct', Math.floor(pct * 100) + ' %');
-    $('progF').style.width = (pct * 100) + '%'; $('progB').style.left = (best * 100) + '%';
+    setBar(pct, best);
     setTxt('hDeaths', String(Game.deaths));
   } else {
     const m = Math.floor(P.x / METER), best = L.mode === 'daily' ? ((D().st.daily[Game.day] || {}).best || 0) : D().st.endBest;
     setTxt('hName', m + ' m');
     setTxt('hSub', 'RECORD ' + best + ' m');
     setTxt('hPct', 'x' + (L.spAt(P.x) / 6.5).toFixed(2));
-    $('progF').style.width = (best ? Math.min(100, m / best * 100) : 0) + '%'; $('progB').style.left = '100%';
+    setBar(best ? Math.min(1, m / best) : 0, 1);
     setTxt('hDeaths', String(L.mode === 'daily' ? ((D().st.daily[Game.day] || {}).tries || 0) : D().st.endRuns));
   }
 }
@@ -1856,7 +1980,7 @@ function begin(fromCp) {
 }
 function startMusic() {
   const L = Game.L;
-  Snd.start(L.mode === 'story' ? hashStr('M' + L.i) : Game.seed, L.bpm, L.mode === 'story' ? L.w : 6, L.boss, Game.t / 60);
+  Snd.start(L.mode === 'story' ? hashStr('M' + L.i) : hashStr('ENDLESS'), L.bpm, L.mode === 'story' ? L.w : 6, L.boss, Game.t / 60);
 }
 function restart(byKey) {
   if (!Game.L) return;
@@ -1891,6 +2015,7 @@ function die(type) {
     }
     Game.dieT = newBest ? .8 : .44;
     if (Game.deaths === 15 && !Game.practice) toastMsg('Bloqué ? Mode entraînement dans le menu pause');
+    Save.save();
   } else {
     Game.dieT = .7;
     endRun();
@@ -1926,6 +2051,7 @@ function win() {
     Game.next = L.i < 99 ? () => startStory(L.i + 1) : () => { quitToMenu(); openScr('story'); banner('FÉLICITATIONS', 'LES 100 NIVEAUX SONT TERMINÉS', 3000); };
   }
   banner(levelLabel(L) + ' ✓', line2, 1500);
+  if (!Game.practice && L.i < 99) { const np = storyParams(L.i + 1); Snd.prepare(hashStr('M' + np.i), np.bpm, np.w, np.boss); }
   Save.save();
   checkAch();
 }
@@ -2046,6 +2172,7 @@ function nextLevel() { for (let i = 0; i < 100; i++) if (!(D().lv[i] && D().lv[i
 function buildHome() {
   const d = D();
   const ni = nextLevel(), np = ni >= 0 ? storyParams(ni) : null, nl = ni >= 0 ? d.lv[ni] : null;
+  if (np) Snd.prepare(hashStr('M' + np.i), np.bpm, np.w, np.boss); // boucle musicale du prochain niveau prête avant de jouer
   $('bCont').firstChild.textContent = ni === 0 && !nl ? 'JOUER' : ni < 0 ? 'HISTOIRE TERMINÉE' : 'CONTINUER';
   $('mCont').textContent = ni < 0 ? 'rejouer pour les étoiles et les éclairs' : (np.boss ? `BOSS · ${np.name}` : `NIVEAU ${np.name}`) + (nl && nl.pct ? ` · record ${Math.floor(nl.pct * 100)} %` : '');
   $('hello').textContent = `SALUT ${d.name}`;
@@ -2146,7 +2273,7 @@ function refreshToggles() {
   document.querySelectorAll('.tog,.tog2').forEach(b => { const k = b.dataset.s; b.classList.toggle('on', !!s[k]); b.textContent = (b.classList.contains('tog2') ? (k === 'music' ? 'MUSIQUE ' : 'SONS ') : '') + (s[k] ? 'ON' : 'OFF'); });
 }
 function buildSet() { $('setName').value = D().name; $('setVol').value = D().set.vol; refreshToggles(); }
-function applySettings() { const s = D().set; Snd.S.music = s.music; Snd.S.sfx = s.sfx; Snd.setVol(s.vol); }
+function applySettings() { const s = D().set; Snd.S.music = s.music; Snd.S.sfx = s.sfx; Snd.setVol(s.vol); if (!s.music) Snd.stop(); }
 
 // ── PARTAGE ──────────────────────────────────────────────────────
 async function share(text) {
@@ -2177,7 +2304,7 @@ addEventListener('keydown', e => {
   else if ((e.code === 'Escape' || e.code === 'KeyP') && !e.repeat) { if (['play', 'count', 'dying'].includes(Game.state)) pause(); else if (Game.state === 'pause') resume(); }
 });
 addEventListener('keyup', e => { if (JUMP_KEYS.includes(e.code)) { Inp.key = false; updDown(); } });
-document.addEventListener('visibilitychange', () => { if (document.hidden) { pause(); Snd.stop(); } });
+document.addEventListener('visibilitychange', () => { if (document.hidden) { pause(); Snd.stop(); Save.save(); } });
 addEventListener('resize', resize);
 
 // boutons
@@ -2219,7 +2346,7 @@ resize();
 if (D().name) openScr('home'); else { showScr('s-name'); }
 checkAch();
 requestAnimationFrame(frame);
-setInterval(() => { if (Game.state === 'play') Save.save(); }, 15000);
+addEventListener('pagehide', () => Save.save());
 
 </script>
 </body>

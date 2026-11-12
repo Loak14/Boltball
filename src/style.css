@@ -78,7 +78,7 @@ input[type=range]{accent-color:var(--red);width:150px}
 #hSub{font:700 .62rem Arial,sans-serif;color:var(--mut)}
 .hc{display:flex;align-items:center;gap:8px}
 #prog{width:min(36vw,280px);height:8px;background:rgba(255,255,255,.12);border-radius:8px;position:relative;overflow:visible}
-#progF{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--red),var(--red2));border-radius:8px}
+#progF{display:block;height:100%;width:100%;transform-origin:0 50%;transform:scaleX(0);will-change:transform;background:linear-gradient(90deg,var(--red),var(--red2));border-radius:8px}
 #progB{position:absolute;top:-4px;width:2px;height:16px;background:var(--gold);left:0;box-shadow:0 0 6px var(--gold)}
 #hPct{font:900 .72rem Arial,sans-serif;min-width:40px}
 .hr{display:flex;justify-content:flex-end;align-items:center;gap:10px}

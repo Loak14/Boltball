@@ -1,20 +1,30 @@
 // ════════════════════════════════════════════════════════════════
-//  AUDIO : séquenceur musical par monde + effets sonores
+//  AUDIO : musique par niveau + effets sonores
+//  La boucle musicale (16 mesures) est calculée une fois hors ligne puis jouée
+//  comme un seul son en boucle : aucun travail audio pendant le jeu.
 // ════════════════════════════════════════════════════════════════
 const Snd = (() => {
   let ac = null, master, mus, sfx, noise, timer = 0;
-  let seq = null; // { bpm, startT, step, nextT, pat }
+  let A = null, NZ = null;       // contexte et bruit utilisés par les instruments (temps réel ou hors ligne)
+  let seq = null;                // séquenceur temps réel (secours si le rendu hors ligne est indisponible)
+  let src = null, tok = 0, noOffline = false;
+  const cache = new Map();       // clé -> { pr, buf }
+  const BARS = 16, MUS_VOL = .55;
   const S = { music: true, sfx: true, vol: .8 };
 
+  function mkNoise(c) {
+    const b = c.createBuffer(1, c.sampleRate, c.sampleRate), d = b.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    return b;
+  }
   function ctx() {
     if (!ac) {
       const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null;
       ac = new AC();
       master = ac.createGain(); master.gain.value = S.vol; master.connect(ac.destination);
-      mus = ac.createGain(); mus.gain.value = .55; mus.connect(master);
+      mus = ac.createGain(); mus.gain.value = MUS_VOL; mus.connect(master);
       sfx = ac.createGain(); sfx.gain.value = .9; sfx.connect(master);
-      noise = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
-      const d = noise.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      noise = mkNoise(ac); A = ac; NZ = noise;
     }
     if (ac.state === 'suspended') ac.resume();
     return ac;
@@ -23,7 +33,7 @@ const Snd = (() => {
 
   // ── instruments ──
   function osc(dest, type, f1, f2, t, dur, vol, att = .004) {
-    const o = ac.createOscillator(), g = ac.createGain();
+    const o = A.createOscillator(), g = A.createGain();
     o.type = type; o.frequency.setValueAtTime(f1, t);
     if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + dur);
     g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + att);
@@ -31,19 +41,19 @@ const Snd = (() => {
     o.connect(g); g.connect(dest); o.start(t); o.stop(t + dur + .02);
   }
   function nz(dest, t, dur, vol, hp, lp) {
-    const s = ac.createBufferSource(); s.buffer = noise;
-    const g = ac.createGain(); let n = s;
-    if (hp) { const f = ac.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = hp; n.connect(f); n = f; }
-    if (lp) { const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = lp; n.connect(f); n = f; }
+    const s = A.createBufferSource(); s.buffer = NZ;
+    const g = A.createGain(); let n = s;
+    if (hp) { const f = A.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = hp; n.connect(f); n = f; }
+    if (lp) { const f = A.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = lp; n.connect(f); n = f; }
     g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     n.connect(g); g.connect(dest); s.start(t, Math.random() * .5); s.stop(t + dur + .02);
   }
-  function bass(t, m, dur, vol) {
-    const o = ac.createOscillator(), f = ac.createBiquadFilter(), g = ac.createGain();
+  function bass(dest, t, m, dur, vol) {
+    const o = A.createOscillator(), f = A.createBiquadFilter(), g = A.createGain();
     o.type = 'sawtooth'; o.frequency.value = hz(m);
     f.type = 'lowpass'; f.frequency.setValueAtTime(900, t); f.frequency.exponentialRampToValueAtTime(160, t + dur); f.Q.value = 6;
     g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    o.connect(f); f.connect(g); g.connect(mus); o.start(t); o.stop(t + dur + .02);
+    o.connect(f); f.connect(g); g.connect(dest); o.start(t); o.stop(t + dur + .02);
   }
 
   // ── motif musical déterministe par niveau ──
@@ -66,50 +76,113 @@ const Snd = (() => {
   }
   function noteOf(p, deg, oct) { const n = p.scale.length; const o = Math.floor(deg / n); return p.root + oct * 12 + o * 12 + p.scale[((deg % n) + n) % n]; }
 
-  function playStep(i, t) {
-    const p = seq.pat, s = i % 16, bar = Math.floor(i / 16), sd = 60 / seq.bpm / 4;
+  function playStep(p, bpm, i, t, dest) {
+    const s = i % 16, bar = Math.floor(i / 16), sd = 60 / bpm / 4;
     const deg = p.prog[bar % p.prog.length];
-    if (p.kickX[s]) osc(mus, 'sine', 150, 42, t, .32, .9);
-    if (s === 4 || s === 12) nz(mus, t, .16, .35, 1200, 6000);
-    if (s % 2 === 1) nz(mus, t, .05, .13, 7000);
-    if (p.boss && s % 2 === 0) nz(mus, t, .03, .06, 9000);
-    if (p.bassRh[s]) bass(t, noteOf(p, deg, -2), sd * 1.7, .32);
+    if (p.kickX[s]) osc(dest, 'sine', 150, 42, t, .32, .9);
+    if (s === 4 || s === 12) nz(dest, t, .16, .35, 1200, 6000);
+    if (s % 2 === 1) nz(dest, t, .05, .13, 7000);
+    if (p.boss && s % 2 === 0) nz(dest, t, .03, .06, 9000);
+    if (p.bassRh[s]) bass(dest, t, noteOf(p, deg, -2), sd * 1.7, .32);
     // l'arpège joue dès la première mesure : on meurt souvent, l'intro doit déjà sonner plein
-    osc(mus, p.lead, hz(noteOf(p, deg + p.arpShape[s % 8], 0)), 0, t, sd * .9, bar >= 1 ? .05 : .04, .002);
-    if (s % 8 === 0) osc(mus, 'triangle', hz(noteOf(p, deg + 4, 1)), 0, t, sd * 6, .03, .02);
+    osc(dest, p.lead, hz(noteOf(p, deg + p.arpShape[s % 8], 0)), 0, t, sd * .9, bar >= 1 ? .05 : .04, .002);
+    if (s % 8 === 0) osc(dest, 'triangle', hz(noteOf(p, deg + 4, 1)), 0, t, sd * 6, .03, .02);
     // la mélodie entre après 2 mesures et monte d'une octave toutes les 8
-    if (bar >= 2) { const m = p.mel[i % 32]; if (m !== null) osc(mus, 'sawtooth', hz(noteOf(p, deg + m, bar % 16 >= 8 ? 2 : 1)), 0, t, sd * 1.8, .028, .01); }
+    if (bar >= 2) { const m = p.mel[i % 32]; if (m !== null) osc(dest, 'sawtooth', hz(noteOf(p, deg + m, bar % 16 >= 8 ? 2 : 1)), 0, t, sd * 1.8, .028, .01); }
     // roulement de caisse claire à la fin de chaque phrase de 4 mesures
-    if (bar % 4 === 3 && s >= 12) nz(mus, t, .08, .16 + (s - 12) * .05, 1500, 7000);
+    if (bar % 4 === 3 && s >= 12) nz(dest, t, .08, .16 + (s - 12) * .05, 1500, 7000);
   }
+
+  // ── rendu hors ligne de la boucle (par petits lots pour ne pas bloquer l'affichage) ──
+  function render(seed, bpm, world, boss) {
+    const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    if (!OAC || noOffline) return null;
+    return new Promise((res, rej) => {
+      let off, nb;
+      const sr = ac.sampleRate, sd = 60 / bpm / 4, n = BARS * 16;
+      try { off = new OAC(1, Math.ceil(n * sd * sr), sr); nb = mkNoise(off); } catch (e) { return rej(e); }
+      const pat = makePattern(seed, world, boss);
+      let i = 0;
+      const chunk = () => {
+        try {
+          A = off; NZ = nb;
+          const end = Math.min(n, i + 24);
+          for (; i < end; i++) playStep(pat, bpm, i, i * sd, off.destination);
+        } catch (e) { A = ac; NZ = noise; return rej(e); }
+        A = ac; NZ = noise;
+        if (i < n) return setTimeout(chunk, 0);
+        try {
+          off.oncomplete = e => res(e.renderedBuffer);
+          const pr = off.startRendering(); if (pr && pr.then) pr.then(res, rej);
+        } catch (e) { rej(e); }
+      };
+      chunk();
+    });
+  }
+  function entry(seed, bpm, world, boss) {
+    const key = [seed, bpm, world, boss ? 1 : 0].join('|');
+    let e = cache.get(key);
+    if (e) return e;
+    const pr = render(seed, bpm, world, boss);
+    if (!pr) return null;
+    e = { pr, buf: null, key };
+    cache.set(key, e);
+    pr.then(buf => { e.buf = buf; for (const k of cache.keys()) { if (cache.size <= 3) break; if (k !== key) cache.delete(k); } },
+      () => { cache.delete(key); noOffline = true; });
+    return e;
+  }
+
+  // ── séquenceur temps réel (secours) ──
   function tick() {
     if (!seq || !ac) return;
     const sd = 60 / seq.bpm / 4;
     while (seq.nextT < ac.currentTime + .14) {
-      if (seq.nextT >= ac.currentTime - .02) playStep(seq.step, seq.nextT);
+      if (seq.nextT >= ac.currentTime - .02) playStep(seq.pat, seq.bpm, seq.step, seq.nextT, mus);
       seq.step++; seq.nextT += sd;
     }
+  }
+  function live(seed, bpm, world, boss, offsetSec) {
+    const sd = 60 / bpm / 4, startT = ac.currentTime + .03 - offsetSec;
+    const step = Math.max(0, Math.ceil(offsetSec / sd - 1e-6));
+    seq = { bpm, startT, step, nextT: startT + step * sd, pat: makePattern(seed, world, boss) };
+    mus.gain.cancelScheduledValues(ac.currentTime); mus.gain.setValueAtTime(MUS_VOL, ac.currentTime);
+    tick(); timer = setInterval(tick, 25);
   }
 
   return {
     S,
     unlock() { ctx(); },
     setVol(v) { S.vol = v; if (master) master.gain.value = v; },
+    // Prépare la boucle d'un niveau à l'avance (pendant l'écran de fin du précédent)
+    prepare(seed, bpm, world, boss) { if (S.music && ac) entry(seed, bpm, world, boss); },
     start(seed, bpm, world, boss, offsetSec = 0) {
-      this.stop();
+      this.stop(true);
       if (!S.music || !ctx()) return;
-      const sd = 60 / bpm / 4, startT = ac.currentTime + .03 - offsetSec;
-      const step = Math.max(0, Math.ceil(offsetSec / sd - 1e-6));
-      seq = { bpm, startT, step, nextT: startT + step * sd, pat: makePattern(seed, world, boss) };
-      mus.gain.cancelScheduledValues(ac.currentTime); mus.gain.setValueAtTime(.55, ac.currentTime);
-      tick(); timer = setInterval(tick, 25);
+      const my = ++tok, asked = ac.currentTime;
+      const play = buf => {
+        if (my !== tok || !S.music) return;
+        const s = ac.createBufferSource(); s.buffer = buf; s.loop = true; s.connect(mus);
+        mus.gain.cancelScheduledValues(ac.currentTime); mus.gain.setValueAtTime(MUS_VOL, ac.currentTime);
+        s.start(0, (offsetSec + ac.currentTime - asked) % buf.duration); src = s;
+      };
+      const e = entry(seed, bpm, world, boss);
+      if (!e) return live(seed, bpm, world, boss, offsetSec);
+      if (e.buf) return play(e.buf);
+      e.pr.then(play, () => { if (my === tok) live(seed, bpm, world, boss, offsetSec + ac.currentTime - asked); });
     },
-    stop() {
+    stop(now) {
+      tok++;
       clearInterval(timer); timer = 0;
-      if (seq && ac) { mus.gain.cancelScheduledValues(ac.currentTime); mus.gain.setValueAtTime(mus.gain.value, ac.currentTime); mus.gain.linearRampToValueAtTime(0, ac.currentTime + .05); }
+      if (!ac) { seq = null; return; }
+      if (src) {
+        const s = src; src = null;
+        try { if (now) s.stop(); else { mus.gain.cancelScheduledValues(ac.currentTime); mus.gain.setValueAtTime(mus.gain.value, ac.currentTime); mus.gain.linearRampToValueAtTime(0, ac.currentTime + .05); s.stop(ac.currentTime + .07); } } catch (e) { }
+      }
+      if (seq) { mus.gain.cancelScheduledValues(ac.currentTime); mus.gain.setValueAtTime(mus.gain.value, ac.currentTime); mus.gain.linearRampToValueAtTime(0, ac.currentTime + .05); }
       seq = null;
     },
-    playing() { return !!seq; },
+    playing() { return !!seq || !!src; },
+    mode() { return src ? 'boucle' : seq ? 'direct' : ''; },
     // ── effets ──
     sfx(name) {
       if (!S.sfx || !ctx()) return;
